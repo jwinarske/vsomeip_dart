@@ -57,3 +57,41 @@ class VehicleSpeedReader {
     return ByteData.sublistView(_bytes).getUint16(offset, Endian.little);
   }
 }
+
+/// Builds a VehicleSpeed Cap'n Proto payload.
+///
+/// In production, this calls the C++ FlatMessageBuilder via FFI to write
+/// directly into a native buffer. For testing, it constructs the payload
+/// in Dart matching the same data section layout.
+///
+/// ```dart
+/// service.notify(
+///     eventId: 0x8001,
+///     payload: VehicleSpeedBuilder.build(
+///         speedKmh: 87.3,
+///         timestamp: DateTime.now().microsecondsSinceEpoch,
+///         sensorId: 0x0001));
+/// ```
+class VehicleSpeedBuilder {
+  /// Build a VehicleSpeed payload (16 bytes = 2 Cap'n Proto words).
+  ///
+  /// Layout matches VehicleSpeedReader offsets:
+  ///   [0..3]   speedKmh    Float32 LE
+  ///   [4..11]  timestamp   UInt64 LE
+  ///   [12..13] sensorId    UInt16 LE
+  ///   [14]     qualityFlag UInt8
+  ///   [15]     reserved
+  static Uint8List build({
+    required double speedKmh,
+    required int timestamp,
+    required int sensorId,
+    int qualityFlag = 0,
+  }) {
+    final buf = ByteData(16);
+    buf.setFloat32(0, speedKmh, Endian.little);
+    buf.setUint64(4, timestamp, Endian.little);
+    buf.setUint16(12, sensorId, Endian.little);
+    buf.setUint8(14, qualityFlag);
+    return buf.buffer.asUint8List();
+  }
+}

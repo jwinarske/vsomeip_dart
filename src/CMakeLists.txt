@@ -32,9 +32,11 @@ if(BUILD_TESTING)
         test/test_service.cpp
         test/test_capnp_bridge.cpp
         test/test_capnp_subscriber.cpp
+        test/test_capnp_service.cpp
         vsomeip_subscriber.cpp
         vsomeip_service.cpp
         capnp_subscriber.cpp
+        capnp_service.cpp
     )
     target_include_directories(vsomeip_bridge_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(vsomeip_bridge_tests PRIVATE GTest::gtest GTest::gtest_main pthread)
