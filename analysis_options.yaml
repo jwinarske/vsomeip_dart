@@ -1,0 +1,15 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "build/**"
+
+linter:
+  rules:
+    - prefer_single_quotes
+    - sort_child_properties_last
+    - unawaited_futures
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - avoid_print

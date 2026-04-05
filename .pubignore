@@ -1,0 +1,7 @@
+third_party/
+build/
+.dart_tool/
+coverage/
+*.so
+*.dylib
+VSOMEIP_DART_PLAN.md

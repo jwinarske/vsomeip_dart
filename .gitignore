@@ -1,0 +1,17 @@
+# Dart
+.dart_tool/
+pubspec.lock
+
+# Build artifacts
+build/
+coverage/
+*.so
+*.dylib
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Don't ignore lib/ — it contains Dart source
+!lib/
