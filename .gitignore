@@ -3,7 +3,8 @@
 pubspec.lock
 
 # Build artifacts
-build/
+example/flutter_vehicle_app/.desktop-homescreen
+build*/
 coverage/
 *.so
 *.dylib
