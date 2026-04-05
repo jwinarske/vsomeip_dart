@@ -169,6 +169,43 @@ void vsomeip_notify(void* handle,
                     uint32_t payload_len,
                     bool     force);
 
+// ── Cap'n Proto support ──────────────────────────────────────────────────────
+
+// Subscribe with Cap'n Proto validation (Path A — raw passthrough).
+// schema_id identifies which generated Reader to use on the Dart side.
+void vsomeip_capnp_subscribe(void* handle,
+                              uint16_t service_id,
+                              uint16_t instance_id,
+                              uint16_t eventgroup_id,
+                              uint16_t event_id,
+                              uint32_t schema_id,
+                              Dart_Port_DL events_port);
+
+// Subscribe with C++ selective decode (Path B).
+// schema_id must be registered via vsomeip_capnp_register_schema().
+void vsomeip_capnp_subscribe_decoded(void* handle,
+                                      uint16_t service_id,
+                                      uint16_t instance_id,
+                                      uint16_t eventgroup_id,
+                                      uint16_t event_id,
+                                      uint32_t schema_id,
+                                      Dart_Port_DL events_port);
+
+// Build and publish a Cap'n Proto notification (zero-copy write).
+void vsomeip_capnp_notify(void* handle,
+                           uint16_t service_id,
+                           uint16_t instance_id,
+                           uint16_t event_id,
+                           uint32_t schema_id,
+                           const uint8_t* fields_json,
+                           int32_t json_len,
+                           bool force);
+
+// Register a schema so the bridge can dispatch to the correct reader.
+void vsomeip_capnp_register_schema(void* handle,
+                                    uint32_t schema_id,
+                                    const char* schema_name);
+
 #ifdef __cplusplus
 }
 #endif

@@ -19,6 +19,7 @@
 // Service provider and request/response functions are added in later PRs.
 
 #include "vsomeip_bridge.h"
+#include "capnp_bridge.h"
 #include "vsomeip_app.h"
 #include "vsomeip_service.h"
 #include "vsomeip_subscriber.h"
@@ -347,4 +348,74 @@ extern "C" void vsomeip_notify(void* handle,
     (void)payload_buf;
     (void)payload_len;
     (void)force;
+}
+
+// ── Cap'n Proto support ─────────────────────────────────────────────────────
+
+extern "C" void vsomeip_capnp_subscribe(void* handle,
+                                         uint16_t service_id,
+                                         uint16_t instance_id,
+                                         uint16_t eventgroup_id,
+                                         uint16_t event_id,
+                                         uint32_t schema_id,
+                                         Dart_Port_DL events_port) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    // Path A: raw passthrough — subscribe like normal, but validate
+    // Cap'n Proto alignment before posting.
+    (void)service_id;
+    (void)instance_id;
+    (void)eventgroup_id;
+    (void)event_id;
+    (void)schema_id;
+    (void)events_port;
+}
+
+extern "C" void vsomeip_capnp_subscribe_decoded(void* handle,
+                                                  uint16_t service_id,
+                                                  uint16_t instance_id,
+                                                  uint16_t eventgroup_id,
+                                                  uint16_t event_id,
+                                                  uint32_t schema_id,
+                                                  Dart_Port_DL events_port) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    (void)service_id;
+    (void)instance_id;
+    (void)eventgroup_id;
+    (void)event_id;
+    (void)schema_id;
+    (void)events_port;
+}
+
+extern "C" void vsomeip_capnp_notify(void* handle,
+                                      uint16_t service_id,
+                                      uint16_t instance_id,
+                                      uint16_t event_id,
+                                      uint32_t schema_id,
+                                      const uint8_t* fields_json,
+                                      int32_t json_len,
+                                      bool force) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    (void)service_id;
+    (void)instance_id;
+    (void)event_id;
+    (void)schema_id;
+    (void)fields_json;
+    (void)json_len;
+    (void)force;
+}
+
+extern "C" void vsomeip_capnp_register_schema(void* handle,
+                                               uint32_t schema_id,
+                                               const char* schema_name) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    (void)schema_id;
+    (void)schema_name;
 }

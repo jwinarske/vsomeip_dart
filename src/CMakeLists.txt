@@ -30,6 +30,7 @@ if(BUILD_TESTING)
         test/test_subscriber.cpp
         test/test_request_response.cpp
         test/test_service.cpp
+        test/test_capnp_bridge.cpp
         vsomeip_subscriber.cpp
         vsomeip_service.cpp
     )

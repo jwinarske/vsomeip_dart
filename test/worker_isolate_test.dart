@@ -59,14 +59,14 @@ void main() {
     });
 
     test('multiple subscriptions to same event share stream', () {
-      final s1 = client.subscribeEvent(
+      client.subscribeEvent(
         serviceId: 0x1234,
         instanceId: 0x0001,
         eventgroupId: 0x0001,
         eventId: 0x8001,
         workerPort: 0,
       );
-      final s2 = client.subscribeEvent(
+      client.subscribeEvent(
         serviceId: 0x1234,
         instanceId: 0x0001,
         eventgroupId: 0x0001,
@@ -76,7 +76,7 @@ void main() {
 
       // Both subscriptions share the same underlying stream controller,
       // so listeners on either reference receive the same messages.
-      // Verify by posting a message and checking both get it.
+      // Verify by checking both subscribe calls were recorded.
       expect(mock.subscriptions, hasLength(2));
     });
 
