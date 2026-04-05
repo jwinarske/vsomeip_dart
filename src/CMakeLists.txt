@@ -6,10 +6,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_TESTING "Build unit tests" ON)
 option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
+option(ENABLE_COVERAGE "Enable gcov coverage" OFF)
 
 if(ENABLE_ASAN)
     add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
     add_link_options(-fsanitize=address)
+endif()
+
+if(ENABLE_COVERAGE)
+    add_compile_options(--coverage -fprofile-arcs -ftest-coverage)
+    add_link_options(--coverage)
 endif()
 
 if(BUILD_TESTING)
@@ -22,6 +28,7 @@ if(BUILD_TESTING)
         test/test_ring_buffer.cpp
         test/test_vsomeip_app.cpp
         test/test_subscriber.cpp
+        test/test_request_response.cpp
         vsomeip_subscriber.cpp
     )
     target_include_directories(vsomeip_bridge_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

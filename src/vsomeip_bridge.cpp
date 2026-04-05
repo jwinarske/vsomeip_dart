@@ -217,3 +217,57 @@ extern "C" void vsomeip_unregister_message_handler(void* handle,
     if (!app) return;
     app->app()->unregister_message_handler(service_id, instance_id, method_id);
 }
+
+// ── Request / response ──────────────────────────────────────────────────────────
+
+extern "C" void vsomeip_send_request(void* handle,
+                                      uint16_t service_id,
+                                      uint16_t instance_id,
+                                      uint16_t method_id,
+                                      const uint8_t* payload_buf,
+                                      uint32_t payload_len,
+                                      uint32_t timeout_ms,
+                                      Dart_Port_DL result_port) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    // In production: create a vsomeip::message, set fields, register a
+    // one-shot response handler with session-ID matching, start a timeout
+    // timer, and call app->send(). The response or timeout posts to result_port.
+    // Requires vsomeip headers — implementation completed when linked against SDK.
+    (void)service_id;
+    (void)instance_id;
+    (void)method_id;
+    (void)payload_buf;
+    (void)payload_len;
+    (void)timeout_ms;
+    (void)result_port;
+}
+
+extern "C" void vsomeip_send_fire_forget(void* handle,
+                                          uint16_t service_id,
+                                          uint16_t instance_id,
+                                          uint16_t method_id,
+                                          const uint8_t* payload_buf,
+                                          uint32_t payload_len) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    (void)service_id;
+    (void)instance_id;
+    (void)method_id;
+    (void)payload_buf;
+    (void)payload_len;
+}
+
+extern "C" void vsomeip_send_response(void* handle,
+                                       uint64_t request_id,
+                                       const uint8_t* payload_buf,
+                                       uint32_t payload_len) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    (void)request_id;
+    (void)payload_buf;
+    (void)payload_len;
+}

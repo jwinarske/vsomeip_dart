@@ -98,6 +98,36 @@ void vsomeip_unregister_message_handler(void* handle,
                                          uint16_t instance_id,
                                          uint16_t method_id);
 
+// ── Request / response ────────────────────────────────────────────────────────
+//
+// Send a request and receive the response.
+// result_port: receives exactly one 0x01 VsomeipMessage (the response)
+//              or 0x05 VsomeipError on timeout / NAK.
+// timeout_ms:  0 = no timeout
+void vsomeip_send_request(void* handle,
+                           uint16_t service_id,
+                           uint16_t instance_id,
+                           uint16_t method_id,
+                           const uint8_t* payload_buf,
+                           uint32_t payload_len,
+                           uint32_t timeout_ms,
+                           Dart_Port_DL result_port);
+
+// Send a fire-and-forget message (message type REQUEST_NO_RETURN).
+void vsomeip_send_fire_forget(void* handle,
+                               uint16_t service_id,
+                               uint16_t instance_id,
+                               uint16_t method_id,
+                               const uint8_t* payload_buf,
+                               uint32_t payload_len);
+
+// Send a response to a received request.
+// request_id: the vsomeip session ID from the incoming VsomeipMessage
+void vsomeip_send_response(void* handle,
+                            uint64_t request_id,
+                            const uint8_t* payload_buf,
+                            uint32_t payload_len);
+
 #ifdef __cplusplus
 }
 #endif
