@@ -128,6 +128,47 @@ void vsomeip_send_response(void* handle,
                             const uint8_t* payload_buf,
                             uint32_t payload_len);
 
+// ── Service provider role ─────────────────────────────────────────────────────
+
+// Offer a service. After this call, the service is discoverable by other apps.
+// requests_port: worker isolate port — receives 0x01 VsomeipMessage for each
+//                incoming request; the Dart layer calls vsomeip_send_response
+//                to reply.
+void vsomeip_offer_service(void* handle,
+                            uint16_t service_id,
+                            uint16_t instance_id,
+                            Dart_Port_DL requests_port);
+
+void vsomeip_stop_offer_service(void* handle,
+                                 uint16_t service_id,
+                                 uint16_t instance_id);
+
+// Offer a SOME/IP event or field.
+// cycle_ms: 0 = no cyclic sending. > 0 = send notification every cycle_ms ms.
+void vsomeip_offer_event(void* handle,
+                          uint16_t service_id,
+                          uint16_t instance_id,
+                          uint16_t event_id,
+                          const uint16_t* eventgroup_ids,
+                          uint32_t n_eventgroups,
+                          bool     is_field,
+                          uint32_t cycle_ms);
+
+void vsomeip_stop_offer_event(void* handle,
+                               uint16_t service_id,
+                               uint16_t instance_id,
+                               uint16_t event_id);
+
+// Publish a notification (notify all current subscribers).
+// Zero-copy path: payload_buf is released after this call returns.
+void vsomeip_notify(void* handle,
+                    uint16_t service_id,
+                    uint16_t instance_id,
+                    uint16_t event_id,
+                    const uint8_t* payload_buf,
+                    uint32_t payload_len,
+                    bool     force);
+
 #ifdef __cplusplus
 }
 #endif

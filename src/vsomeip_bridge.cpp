@@ -20,6 +20,7 @@
 
 #include "vsomeip_bridge.h"
 #include "vsomeip_app.h"
+#include "vsomeip_service.h"
 #include "vsomeip_subscriber.h"
 #include "vsomeip_types.h"
 
@@ -270,4 +271,80 @@ extern "C" void vsomeip_send_response(void* handle,
     (void)request_id;
     (void)payload_buf;
     (void)payload_len;
+}
+
+// ── Service provider role ───────────────────────────────────────────────────────
+
+extern "C" void vsomeip_offer_service(void* handle,
+                                       uint16_t service_id,
+                                       uint16_t instance_id,
+                                       Dart_Port_DL requests_port) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    // In production: call app->offer_service() and register a message handler
+    // that forwards incoming requests to the Dart worker isolate via requests_port.
+    (void)service_id;
+    (void)instance_id;
+    (void)requests_port;
+}
+
+extern "C" void vsomeip_stop_offer_service(void* handle,
+                                            uint16_t service_id,
+                                            uint16_t instance_id) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    (void)service_id;
+    (void)instance_id;
+}
+
+extern "C" void vsomeip_offer_event(void* handle,
+                                     uint16_t service_id,
+                                     uint16_t instance_id,
+                                     uint16_t event_id,
+                                     const uint16_t* eventgroup_ids,
+                                     uint32_t n_eventgroups,
+                                     bool is_field,
+                                     uint32_t cycle_ms) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    (void)service_id;
+    (void)instance_id;
+    (void)event_id;
+    (void)eventgroup_ids;
+    (void)n_eventgroups;
+    (void)is_field;
+    (void)cycle_ms;
+}
+
+extern "C" void vsomeip_stop_offer_event(void* handle,
+                                          uint16_t service_id,
+                                          uint16_t instance_id,
+                                          uint16_t event_id) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    (void)service_id;
+    (void)instance_id;
+    (void)event_id;
+}
+
+extern "C" void vsomeip_notify(void* handle,
+                                uint16_t service_id,
+                                uint16_t instance_id,
+                                uint16_t event_id,
+                                const uint8_t* payload_buf,
+                                uint32_t payload_len,
+                                bool force) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    (void)service_id;
+    (void)instance_id;
+    (void)event_id;
+    (void)payload_buf;
+    (void)payload_len;
+    (void)force;
 }

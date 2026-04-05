@@ -29,7 +29,9 @@ if(BUILD_TESTING)
         test/test_vsomeip_app.cpp
         test/test_subscriber.cpp
         test/test_request_response.cpp
+        test/test_service.cpp
         vsomeip_subscriber.cpp
+        vsomeip_service.cpp
     )
     target_include_directories(vsomeip_bridge_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(vsomeip_bridge_tests PRIVATE GTest::gtest GTest::gtest_main pthread)
