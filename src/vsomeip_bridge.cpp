@@ -15,11 +15,12 @@
 //
 
 // vsomeip_bridge.cpp — C ABI entry points for Dart FFI.
-// This file implements the lifecycle functions. Subscriber and service
-// provider functions are added in later PRs.
+// Implements lifecycle, subscribe, and message handler functions.
+// Service provider and request/response functions are added in later PRs.
 
 #include "vsomeip_bridge.h"
 #include "vsomeip_app.h"
+#include "vsomeip_subscriber.h"
 #include "vsomeip_types.h"
 
 #include <cstring>
@@ -110,4 +111,109 @@ extern "C" void vsomeip_app_destroy(void* handle) {
         g_apps.erase(it);
     }
     // app destructor calls stop() and joins the thread
+}
+
+// ── Helper: get VsomeipApp from handle ──────────────────────────────────────────
+
+static VsomeipApp* get_app(void* handle) {
+    std::lock_guard<std::mutex> lock(g_apps_mutex);
+    auto it = g_apps.find(handle);
+    return it != g_apps.end() ? it->second.get() : nullptr;
+}
+
+// ── Service consumer (client) role ──────────────────────────────────────────────
+
+extern "C" void vsomeip_request_service(void* handle,
+                                         uint16_t service_id,
+                                         uint16_t instance_id) {
+    auto* app = get_app(handle);
+    if (!app) return;
+    app->app()->request_service(service_id, instance_id);
+}
+
+extern "C" void vsomeip_release_service(void* handle,
+                                         uint16_t service_id,
+                                         uint16_t instance_id) {
+    auto* app = get_app(handle);
+    if (!app) return;
+    app->app()->release_service(service_id, instance_id);
+}
+
+extern "C" void vsomeip_subscribe(void* handle,
+                                   uint16_t service_id,
+                                   uint16_t instance_id,
+                                   uint16_t eventgroup_id,
+                                   uint16_t event_id,
+                                   Dart_Port_DL events_port) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    // Create a subscriber that posts to the given Dart port
+    auto post_fn = [events_port](const uint8_t* hdr, uint32_t hdr_len,
+                                 const uint8_t* payload, uint32_t payload_len) {
+        post_to_dart(events_port, hdr[0], hdr + 1, hdr_len - 1);
+        // TODO(PR 5): actual zero-copy Dart_CObject array post
+        (void)payload;
+        (void)payload_len;
+    };
+
+    auto subscriber = std::make_shared<VsomeipSubscriber>(std::move(post_fn));
+
+    // Register the message handler with vsomeip
+    app->app()->register_message_handler(
+        service_id, instance_id, event_id,
+        [subscriber](const std::shared_ptr<void>& msg) {
+            // In production: extract fields from vsomeip::message and call
+            // subscriber->on_message(). Requires vsomeip headers.
+            (void)msg;
+            (void)subscriber;
+        });
+
+    // Subscribe to the event group
+    app->app()->request_event(service_id, instance_id, event_id,
+                               {eventgroup_id});
+    app->app()->subscribe(service_id, instance_id, eventgroup_id);
+}
+
+extern "C" void vsomeip_unsubscribe(void* handle,
+                                     uint16_t service_id,
+                                     uint16_t instance_id,
+                                     uint16_t eventgroup_id) {
+    auto* app = get_app(handle);
+    if (!app) return;
+    app->app()->unsubscribe(service_id, instance_id, eventgroup_id);
+}
+
+extern "C" void vsomeip_register_message_handler(void* handle,
+                                                   uint16_t service_id,
+                                                   uint16_t instance_id,
+                                                   uint16_t method_id,
+                                                   Dart_Port_DL events_port) {
+    auto* app = get_app(handle);
+    if (!app) return;
+
+    auto post_fn = [events_port](const uint8_t* hdr, uint32_t hdr_len,
+                                 const uint8_t* payload, uint32_t payload_len) {
+        post_to_dart(events_port, hdr[0], hdr + 1, hdr_len - 1);
+        (void)payload;
+        (void)payload_len;
+    };
+
+    auto subscriber = std::make_shared<VsomeipSubscriber>(std::move(post_fn));
+
+    app->app()->register_message_handler(
+        service_id, instance_id, method_id,
+        [subscriber](const std::shared_ptr<void>& msg) {
+            (void)msg;
+            (void)subscriber;
+        });
+}
+
+extern "C" void vsomeip_unregister_message_handler(void* handle,
+                                                     uint16_t service_id,
+                                                     uint16_t instance_id,
+                                                     uint16_t method_id) {
+    auto* app = get_app(handle);
+    if (!app) return;
+    app->app()->unregister_message_handler(service_id, instance_id, method_id);
 }

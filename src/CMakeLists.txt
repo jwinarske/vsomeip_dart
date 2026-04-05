@@ -21,6 +21,8 @@ if(BUILD_TESTING)
         test/test_types.cpp
         test/test_ring_buffer.cpp
         test/test_vsomeip_app.cpp
+        test/test_subscriber.cpp
+        vsomeip_subscriber.cpp
     )
     target_include_directories(vsomeip_bridge_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(vsomeip_bridge_tests PRIVATE GTest::gtest GTest::gtest_main pthread)

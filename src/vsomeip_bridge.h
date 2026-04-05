@@ -56,6 +56,48 @@ void* vsomeip_app_create(Dart_Port_DL events_port,
 
 void  vsomeip_app_destroy(void* handle);
 
+// ── Service consumer (client) role ───────────────────────────────────────────
+
+// Declare interest in a service. Triggers VsomeipAvailability callback
+// when the service is discovered (or lost).
+void vsomeip_request_service(void* handle,
+                              uint16_t service_id,
+                              uint16_t instance_id);
+
+void vsomeip_release_service(void* handle,
+                              uint16_t service_id,
+                              uint16_t instance_id);
+
+// Subscribe to an event group. Triggers VsomeipSubscribeAck, then
+// VsomeipMessage for each event notification.
+// events_port: the worker isolate's port (not the main isolate)
+void vsomeip_subscribe(void* handle,
+                        uint16_t service_id,
+                        uint16_t instance_id,
+                        uint16_t eventgroup_id,
+                        uint16_t event_id,
+                        Dart_Port_DL events_port);
+
+void vsomeip_unsubscribe(void* handle,
+                          uint16_t service_id,
+                          uint16_t instance_id,
+                          uint16_t eventgroup_id);
+
+// Register a handler for all messages from a service/instance/method tuple.
+// ANY_SERVICE (0xFFFF), ANY_INSTANCE (0xFFFF), ANY_METHOD (0xFFFF) wildcards
+// are supported.
+// events_port: worker isolate port
+void vsomeip_register_message_handler(void* handle,
+                                       uint16_t service_id,
+                                       uint16_t instance_id,
+                                       uint16_t method_id,
+                                       Dart_Port_DL events_port);
+
+void vsomeip_unregister_message_handler(void* handle,
+                                         uint16_t service_id,
+                                         uint16_t instance_id,
+                                         uint16_t method_id);
+
 #ifdef __cplusplus
 }
 #endif
