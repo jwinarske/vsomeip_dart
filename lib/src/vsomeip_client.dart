@@ -195,6 +195,78 @@ class VsomeipClient {
     );
   }
 
+  // ── Cap'n Proto API ─────────��──────────────────────────────────────────
+
+  /// Subscribe to a Cap'n Proto-encoded SOME/IP event (Path A — raw
+  /// passthrough). The payload contains raw Cap'n Proto bytes readable
+  /// by generated *Reader classes with zero decode overhead.
+  Stream<SomeIpMessage> subscribeCapnp({
+    required int serviceId,
+    required int instanceId,
+    required int eventgroupId,
+    required int eventId,
+    required int schemaId,
+    required int workerPort,
+  }) {
+    _bindings.capnpRegisterSchema(_handle, schemaId, 'schema_$schemaId');
+    _bindings.capnpSubscribe(
+      _handle,
+      serviceId,
+      instanceId,
+      eventgroupId,
+      eventId,
+      schemaId,
+      workerPort,
+    );
+
+    final key = SomeIpKey(serviceId, instanceId, eventId);
+    return _streams.putIfAbsent(key, () => StreamController.broadcast()).stream;
+  }
+
+  /// Subscribe with C++ selective decode (Path B).
+  Stream<SomeIpMessage> subscribeCapnpDecoded({
+    required int serviceId,
+    required int instanceId,
+    required int eventgroupId,
+    required int eventId,
+    required int schemaId,
+    required int workerPort,
+  }) {
+    _bindings.capnpRegisterSchema(_handle, schemaId, 'schema_$schemaId');
+    _bindings.capnpSubscribeDecoded(
+      _handle,
+      serviceId,
+      instanceId,
+      eventgroupId,
+      eventId,
+      schemaId,
+      workerPort,
+    );
+
+    final key = SomeIpKey(serviceId, instanceId, eventId);
+    return _streams.putIfAbsent(key, () => StreamController.broadcast()).stream;
+  }
+
+  /// Publish a Cap'n Proto notification (zero-copy write path).
+  void notifyCapnp({
+    required int serviceId,
+    required int instanceId,
+    required int eventId,
+    required int schemaId,
+    required Uint8List fieldsJson,
+    bool force = false,
+  }) {
+    _bindings.capnpNotify(
+      _handle,
+      serviceId,
+      instanceId,
+      eventId,
+      schemaId,
+      fieldsJson,
+      force,
+    );
+  }
+
   /// Close the vsomeip application and release all resources.
   Future<void> close() async {
     _bindings.appDestroy(_handle);

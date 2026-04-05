@@ -8,3 +8,8 @@ export 'src/throttle.dart';
 export 'src/vsomeip_client.dart';
 export 'src/vsomeip_message.dart';
 export 'src/vsomeip_service.dart';
+
+// Cap'n Proto generated readers
+export 'generated/imu_data.capnp.dart';
+export 'generated/radar_object.capnp.dart';
+export 'generated/vehicle_speed.capnp.dart';

@@ -181,4 +181,55 @@ class MockVsomeipBridge implements VsomeipBindings {
   ) {
     notified.add(NotifyCall(serviceId, instanceId, eventId, payload, force));
   }
+
+  // ── Cap'n Proto support ──────────────────────────────────────────────────
+
+  final List<int> registeredSchemas = [];
+  final List<SubscribeCall> capnpSubscriptions = [];
+
+  @override
+  void capnpSubscribe(
+    Object handle,
+    int serviceId,
+    int instanceId,
+    int eventgroupId,
+    int eventId,
+    int schemaId,
+    int eventsPort,
+  ) {
+    capnpSubscriptions.add(
+      SubscribeCall(serviceId, instanceId, eventgroupId, eventId),
+    );
+  }
+
+  @override
+  void capnpSubscribeDecoded(
+    Object handle,
+    int serviceId,
+    int instanceId,
+    int eventgroupId,
+    int eventId,
+    int schemaId,
+    int eventsPort,
+  ) {
+    capnpSubscriptions.add(
+      SubscribeCall(serviceId, instanceId, eventgroupId, eventId),
+    );
+  }
+
+  @override
+  void capnpNotify(
+    Object handle,
+    int serviceId,
+    int instanceId,
+    int eventId,
+    int schemaId,
+    Uint8List fieldsJson,
+    bool force,
+  ) {}
+
+  @override
+  void capnpRegisterSchema(Object handle, int schemaId, String schemaName) {
+    registeredSchemas.add(schemaId);
+  }
 }

@@ -104,4 +104,38 @@ abstract class VsomeipBindings {
     Uint8List payload,
     bool force,
   );
+
+  // ── Cap'n Proto support ──────────────────────────────────────────────────
+
+  void capnpSubscribe(
+    Object handle,
+    int serviceId,
+    int instanceId,
+    int eventgroupId,
+    int eventId,
+    int schemaId,
+    int eventsPort,
+  );
+
+  void capnpSubscribeDecoded(
+    Object handle,
+    int serviceId,
+    int instanceId,
+    int eventgroupId,
+    int eventId,
+    int schemaId,
+    int eventsPort,
+  );
+
+  void capnpNotify(
+    Object handle,
+    int serviceId,
+    int instanceId,
+    int eventId,
+    int schemaId,
+    Uint8List fieldsJson,
+    bool force,
+  );
+
+  void capnpRegisterSchema(Object handle, int schemaId, String schemaName);
 }
