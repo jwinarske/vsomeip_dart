@@ -1,0 +1,16 @@
+name: flutter_vehicle_app
+description: >-
+  Example Flutter app demonstrating vsomeip_dart with a realtime vehicle
+  sensor dashboard. Shows throttled high-frequency signal rendering,
+  service registry browsing, and live waveform charts.
+
+publish_to: none
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  vsomeip_dart:
+    path: ../..
