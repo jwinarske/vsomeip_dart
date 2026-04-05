@@ -147,6 +147,90 @@ service.notify(eventId: 0x8001, payload: data);
 - [`offer_service.dart`](example/offer_service.dart) — act as a SOME/IP service provider
 - [`high_frequency.dart`](example/high_frequency.dart) — 1 kHz signal with throttled UI
 - [`flutter_vehicle_app/`](example/flutter_vehicle_app/) — Flutter dashboard with live sensors
+- [`capnp/zero_copy_receive.dart`](example/capnp/zero_copy_receive.dart) — Cap'n Proto Path A raw passthrough
+- [`capnp/selective_decode.dart`](example/capnp/selective_decode.dart) — Cap'n Proto Path B selective decode
+- [`capnp/service_publish.dart`](example/capnp/service_publish.dart) — Cap'n Proto zero-copy send
+
+## Cap'n Proto Integration
+
+vsomeip payloads are raw bytes — the SOME/IP standard defines the envelope
+but leaves payload encoding to the application. Cap'n Proto provides
+zero-parse, zero-allocation access to structured data directly from the
+vsomeip payload buffer.
+
+### Three Receive Paths
+
+| Path | Description | Copies | Decode | Use case |
+|------|-------------|--------|--------|----------|
+| **A** Raw passthrough | Post raw bytes to Dart, read via `*Reader` | 0 | 0 | 1 kHz+ sensors |
+| **B** Selective decode | C++ decodes subset, posts compact struct | 1 encode | 1 decode | Dashboard widgets |
+| **C** Dart reader | Post raw bytes, Dart capnp package decodes | 0 | Dart | Generic schemas |
+
+### Schema Definition
+
+Define schemas in `schemas/*.capnp`:
+
+```capnp
+# schemas/vehicle_speed.capnp
+@0xdeadbeefcafe0001;
+
+struct VehicleSpeed {
+  speedKmh     @0 :Float32;
+  timestamp    @1 :UInt64;
+  sensorId     @2 :UInt16;
+  qualityFlag  @3 :UInt8;
+}
+```
+
+The build hook compiles schemas to C++ headers and generates Dart FFI
+bindings via `tools/capnp_dart_gen.py`.
+
+### Zero-Copy Read (Path A)
+
+```dart
+final stream = client.subscribeCapnp(
+    serviceId: 0x1234, instanceId: 0x0001,
+    eventgroupId: 0x0001, eventId: 0x8001,
+    schemaId: VehicleSpeedReader.schemaId,
+    workerPort: port);
+
+stream.listen((msg) {
+  // Reads directly from native memory — no parse, no allocation
+  final speed = VehicleSpeedReader(msg.payload!);
+  setState(() => _speed = speed.speedKmh);
+});
+```
+
+### Zero-Copy Write
+
+```dart
+service.notify(
+    eventId: 0x8001,
+    payload: VehicleSpeedBuilder.build(
+        speedKmh: 87.3,
+        timestamp: DateTime.now().microsecondsSinceEpoch,
+        sensorId: 0x0001));
+```
+
+### Available Schemas
+
+| Schema | Fields | Size | Use case |
+|--------|--------|------|----------|
+| `VehicleSpeed` | speed, timestamp, sensor, quality | 16 B | Speedometer, trip computer |
+| `RadarObject` | id, distance, azimuth, velocity, rcs, class | 40 B | ADAS, collision warning |
+| `ImuData` | accel xyz, gyro xyz, timestamp, sensor | 40 B | Stability control, navigation |
+| `DoorStatus` | door, open, locked, angle, timestamp | — | Body control, security |
+| `Infotainment` | track, artist, art, duration, position | — | Media player, HMI |
+
+### Performance
+
+| Operation | Latency | Allocations |
+|-----------|---------|-------------|
+| Path A read (VehicleSpeedReader.speedKmh) | < 50 ns | 0 |
+| Path B decode (C++ selective) | < 1 us | 1 struct |
+| Path A write (VehicleSpeedBuilder.build) | < 100 ns | 1 Uint8List |
+| Alignment check (is_capnp_aligned) | < 5 ns | 0 |
+| Alignment copy fallback (< 0.001% of messages) | ~ 200 ns | 1 buffer |
 
 ## License
 
