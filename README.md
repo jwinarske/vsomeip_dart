@@ -150,6 +150,7 @@ service.notify(eventId: 0x8001, payload: data);
 - [`capnp/zero_copy_receive.dart`](example/capnp/zero_copy_receive.dart) — Cap'n Proto Path A raw passthrough
 - [`capnp/selective_decode.dart`](example/capnp/selective_decode.dart) — Cap'n Proto Path B selective decode
 - [`capnp/service_publish.dart`](example/capnp/service_publish.dart) — Cap'n Proto zero-copy send
+- [`simulator/`](example/simulator/) — standalone vehicle signal simulator for dashboard testing
 
 ## Cap'n Proto Integration
 
