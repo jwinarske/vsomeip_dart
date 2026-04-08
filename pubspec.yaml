@@ -4,7 +4,7 @@ description: >-
   Delivers messages from automotive SOME/IP services to Dart Streams with
   zero-copy payloads and a worker-isolate design that never blocks the
   Flutter render thread.
-version: 0.1.0
+version: 0.2.0
 
 homepage:      https://github.com/meta-flutter/workspace-automation
 repository:    https://github.com/meta-flutter/workspace-automation
@@ -27,8 +27,8 @@ platforms:
   linux:
 
 dependencies:
-  hooks:       any
-  code_assets: any
+  hooks:       ^1.0.2
+  code_assets: ^1.0.0
   ffi:         ^2.1.0
   path:        ^1.9.0
 

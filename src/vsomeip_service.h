@@ -21,8 +21,6 @@
 
 #pragma once
 
-#include "vsomeip_types.h"
-
 #include <cstdint>
 #include <functional>
 #include <mutex>
@@ -31,9 +29,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "vsomeip_types.h"
+
 // Callback for posting incoming service requests to Dart.
-using ServiceRequestFn = std::function<void(
-    uint8_t disc, const uint8_t* data, uint32_t len)>;
+using ServiceRequestFn = std::function<void(uint8_t disc, const uint8_t* data, uint32_t len)>;
 
 // Tracks offered events and their eventgroup memberships.
 struct OfferedEvent {
@@ -60,22 +59,21 @@ public:
         return (static_cast<uint32_t>(service_id) << 16) | instance_id;
     }
 
-    void add(uint16_t service_id, uint16_t instance_id,
-             ServiceRequestFn request_fn);
+    void add(uint16_t service_id, uint16_t instance_id, ServiceRequestFn request_fn);
 
     void remove(uint16_t service_id, uint16_t instance_id);
 
-    void add_event(uint16_t service_id, uint16_t instance_id,
+    void add_event(uint16_t service_id,
+                   uint16_t instance_id,
                    uint16_t event_id,
                    const std::set<uint16_t>& eventgroup_ids,
-                   bool is_field, uint32_t cycle_ms);
+                   bool is_field,
+                   uint32_t cycle_ms);
 
-    void remove_event(uint16_t service_id, uint16_t instance_id,
-                      uint16_t event_id);
+    void remove_event(uint16_t service_id, uint16_t instance_id, uint16_t event_id);
 
     // Look up an offered service. Returns nullptr if not found.
-    const OfferedService* find(uint16_t service_id,
-                               uint16_t instance_id) const;
+    const OfferedService* find(uint16_t service_id, uint16_t instance_id) const;
 
     // Look up an offered event. Returns nullptr if not found.
     const OfferedEvent* find_event(uint16_t service_id,

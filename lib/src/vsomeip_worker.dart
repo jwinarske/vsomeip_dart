@@ -35,12 +35,14 @@ import 'dart:typed_data';
 import 'ffi/codec.dart';
 import 'throttle.dart';
 import 'vsomeip_message.dart';
+
 /// Configuration passed to [workerIsolateMain] at spawn time.
 class WorkerConfig {
   final SendPort setupSendPort;
   final SendPort mainSendPort;
   const WorkerConfig(this.setupSendPort, this.mainSendPort);
 }
+
 /// Control message to set per-signal throttle rate.
 ///
 /// Sent from the main isolate to the worker via [VsomeipClient.setThrottle].
@@ -50,8 +52,13 @@ class SetThrottleCmd {
   final int methodId;
   final double maxHz;
   const SetThrottleCmd(
-      this.serviceId, this.instanceId, this.methodId, this.maxHz);
+    this.serviceId,
+    this.instanceId,
+    this.methodId,
+    this.maxHz,
+  );
 }
+
 /// Entry point for the vsomeip worker isolate.
 ///
 /// Must be a top-level function for [Isolate.spawn]. [cfg] carries the
@@ -87,6 +94,7 @@ void workerIsolateMain(WorkerConfig cfg) {
     }
   });
 }
+
 /// Dispatch a decoded discriminator to the appropriate handler.
 void _handleDisc(
   Uint8List data,
@@ -116,6 +124,7 @@ void _handleDisc(
       mainSendPort.send(data);
   }
 }
+
 /// Decode a message header, apply throttle, and forward to the main isolate.
 void _handleMessage(
   Uint8List headerData,

@@ -84,8 +84,7 @@ public:
     static constexpr uint32_t capacity() noexcept { return N - 1; }
 
     bool empty() const noexcept {
-        return head_.load(std::memory_order_acquire) ==
-               tail_.load(std::memory_order_acquire);
+        return head_.load(std::memory_order_acquire) == tail_.load(std::memory_order_acquire);
     }
 
 private:

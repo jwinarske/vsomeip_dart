@@ -30,9 +30,11 @@
 
 #pragma once
 
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <new>
 
 /// Check if a pointer is aligned to 8 bytes (Cap'n Proto word boundary).
 /// Returns true if aligned, false if not.
@@ -43,15 +45,30 @@ inline bool is_capnp_aligned(const void* ptr) {
 /// Size of a Cap'n Proto word in bytes.
 constexpr size_t kCapnpWordSize = 8;
 
+/// Hard cap on a Cap'n Proto payload size we are willing to copy. Anything
+/// above this is rejected. SOME/IP MTUs are tiny; 1 MiB is generous.
+constexpr size_t kCapnpMaxPayloadBytes = 1u << 20;
+
 /// Copy unaligned data into an aligned buffer.
-/// Returns a heap-allocated buffer that the caller must free with delete[].
+/// Returns a heap-allocated buffer that the caller must free with delete[],
+/// or nullptr if the input length is unsafe (overflow / over-cap).
 /// The buffer is padded to a Cap'n Proto word boundary.
 inline uint8_t* capnp_align_copy(const uint8_t* data, size_t len) {
-    const size_t aligned_len = ((len + kCapnpWordSize - 1) / kCapnpWordSize)
-                               * kCapnpWordSize;
-    auto* buf = new uint8_t[aligned_len];
+    // M9: guard against integer overflow on `len + (kCapnpWordSize - 1)` and
+    // cap to a sane maximum so a hostile SOME/IP payload length can't drive
+    // an unbounded allocation here.
+    if (len > kCapnpMaxPayloadBytes) {
+        return nullptr;
+    }
+    if (len > SIZE_MAX - (kCapnpWordSize - 1)) {
+        return nullptr;
+    }
+    const size_t aligned_len = ((len + kCapnpWordSize - 1) / kCapnpWordSize) * kCapnpWordSize;
+    auto* buf = new (std::nothrow) uint8_t[aligned_len];
+    if (!buf) {
+        return nullptr;
+    }
     std::memcpy(buf, data, len);
-    // Zero-fill padding bytes
     if (aligned_len > len) {
         std::memset(buf + len, 0, aligned_len - len);
     }

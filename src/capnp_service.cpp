@@ -20,44 +20,50 @@
 
 // ── CapnpPayloadBuilder ─────────────────────────────────────────────────────
 
-CapnpPayloadBuilder::CapnpPayloadBuilder(size_t capacity)
-    : buf_(capacity, 0) {}
+CapnpPayloadBuilder::CapnpPayloadBuilder(size_t capacity) : buf_(capacity, 0) {}
 
 void CapnpPayloadBuilder::set_float32(size_t offset, float value) {
-    if (offset + sizeof(float) > buf_.size()) return;
+    if (offset + sizeof(float) > buf_.size())
+        return;
     std::memcpy(buf_.data() + offset, &value, sizeof(float));
 }
 
 void CapnpPayloadBuilder::set_float64(size_t offset, double value) {
-    if (offset + sizeof(double) > buf_.size()) return;
+    if (offset + sizeof(double) > buf_.size())
+        return;
     std::memcpy(buf_.data() + offset, &value, sizeof(double));
 }
 
 void CapnpPayloadBuilder::set_uint8(size_t offset, uint8_t value) {
-    if (offset >= buf_.size()) return;
+    if (offset >= buf_.size())
+        return;
     buf_[offset] = value;
 }
 
 void CapnpPayloadBuilder::set_uint16(size_t offset, uint16_t value) {
-    if (offset + sizeof(uint16_t) > buf_.size()) return;
+    if (offset + sizeof(uint16_t) > buf_.size())
+        return;
     std::memcpy(buf_.data() + offset, &value, sizeof(uint16_t));
 }
 
 void CapnpPayloadBuilder::set_uint32(size_t offset, uint32_t value) {
-    if (offset + sizeof(uint32_t) > buf_.size()) return;
+    if (offset + sizeof(uint32_t) > buf_.size())
+        return;
     std::memcpy(buf_.data() + offset, &value, sizeof(uint32_t));
 }
 
 void CapnpPayloadBuilder::set_uint64(size_t offset, uint64_t value) {
-    if (offset + sizeof(uint64_t) > buf_.size()) return;
+    if (offset + sizeof(uint64_t) > buf_.size())
+        return;
     std::memcpy(buf_.data() + offset, &value, sizeof(uint64_t));
 }
 
 // ── Schema-specific builders ────────────────────────────────────────────────
 
-std::vector<uint8_t> capnp_build_vehicle_speed(
-    float speed_kmh, uint64_t timestamp,
-    uint16_t sensor_id, uint8_t quality_flag) {
+std::vector<uint8_t> capnp_build_vehicle_speed(float speed_kmh,
+                                               uint64_t timestamp,
+                                               uint16_t sensor_id,
+                                               uint8_t quality_flag) {
     // VehicleSpeed data section layout:
     //   [0..3]   speedKmh    Float32
     //   [4..11]  timestamp   UInt64
@@ -73,10 +79,13 @@ std::vector<uint8_t> capnp_build_vehicle_speed(
     return builder.take();
 }
 
-std::vector<uint8_t> capnp_build_radar_object(
-    uint16_t object_id, float distance_m, float azimuth_deg,
-    float velocity_ms, float rcs_dbsm, uint64_t timestamp,
-    uint8_t classification) {
+std::vector<uint8_t> capnp_build_radar_object(uint16_t object_id,
+                                              float distance_m,
+                                              float azimuth_deg,
+                                              float velocity_ms,
+                                              float rcs_dbsm,
+                                              uint64_t timestamp,
+                                              uint8_t classification) {
     // RadarObject data section layout:
     //   [0..1]   objectId       UInt16
     //   [2..3]   padding
@@ -99,10 +108,14 @@ std::vector<uint8_t> capnp_build_radar_object(
     return builder.take();
 }
 
-std::vector<uint8_t> capnp_build_imu_data(
-    float accel_x, float accel_y, float accel_z,
-    float gyro_x, float gyro_y, float gyro_z,
-    uint64_t timestamp, uint16_t sensor_id) {
+std::vector<uint8_t> capnp_build_imu_data(float accel_x,
+                                          float accel_y,
+                                          float accel_z,
+                                          float gyro_x,
+                                          float gyro_y,
+                                          float gyro_z,
+                                          uint64_t timestamp,
+                                          uint16_t sensor_id) {
     // ImuData data section layout:
     //   [0..3]   accelX    Float32
     //   [4..7]   accelY    Float32

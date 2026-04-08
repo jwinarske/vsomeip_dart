@@ -5,6 +5,7 @@ analyzer:
     - "**/*.g.dart"
     - "build/**"
     - "example/flutter_vehicle_app/**"
+    - "example/flutter_drone_cockpit/**"
 
 linter:
   rules:

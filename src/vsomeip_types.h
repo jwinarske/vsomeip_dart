@@ -36,33 +36,33 @@
 
 // Discriminator byte constants
 namespace vsomeip_disc {
-constexpr uint8_t kMessage       = 0x01;
-constexpr uint8_t kAvailability  = 0x02;
-constexpr uint8_t kState         = 0x03;
-constexpr uint8_t kSubscribeAck  = 0x04;
-constexpr uint8_t kError         = 0x05;
-constexpr uint8_t kBatch         = 0x10;
-constexpr uint8_t kSentinel      = 0xFF;
+constexpr uint8_t kMessage = 0x01;
+constexpr uint8_t kAvailability = 0x02;
+constexpr uint8_t kState = 0x03;
+constexpr uint8_t kSubscribeAck = 0x04;
+constexpr uint8_t kError = 0x05;
+constexpr uint8_t kBatch = 0x10;
+constexpr uint8_t kSentinel = 0xFF;
 }  // namespace vsomeip_disc
 
 struct VsomeipMessageHeader {
     uint16_t service_id;
     uint16_t instance_id;
-    uint16_t method_id;     // method for REQUEST/RESPONSE, event ID for notifications
-    uint8_t  message_type;  // REQUEST=0, RESPONSE=0x80, NOTIFICATION=0x02, etc.
-    uint8_t  return_code;   // E_OK=0, E_NOT_OK=1, E_UNKNOWN_SERVICE=2, etc.
-    uint64_t request_id;    // (client_id << 16) | session_id
-    uint32_t payload_len;   // length of raw payload bytes following the header
+    uint16_t method_id;    // method for REQUEST/RESPONSE, event ID for notifications
+    uint8_t message_type;  // REQUEST=0, RESPONSE=0x80, NOTIFICATION=0x02, etc.
+    uint8_t return_code;   // E_OK=0, E_NOT_OK=1, E_UNKNOWN_SERVICE=2, etc.
+    uint64_t request_id;   // (client_id << 16) | session_id
+    uint32_t payload_len;  // length of raw payload bytes following the header
 };
 
 struct VsomeipAvailability {
     uint16_t service_id;
     uint16_t instance_id;
-    bool     available;
+    bool available;
 };
 
 struct VsomeipState {
-    bool        registered;  // true = REGISTERED, false = DEREGISTERED
+    bool registered;  // true = REGISTERED, false = DEREGISTERED
     std::string app_name;
 };
 
@@ -71,13 +71,13 @@ struct VsomeipSubscribeAck {
     uint16_t instance_id;
     uint16_t eventgroup_id;
     uint16_t event_id;
-    uint16_t error_code;   // 0 = accepted, non-zero = rejected
+    uint16_t error_code;  // 0 = accepted, non-zero = rejected
 };
 
 struct VsomeipError {
-    std::string source;    // which bridge function produced the error
+    std::string source;  // which bridge function produced the error
     std::string message;
-    uint32_t    code;
+    uint32_t code;
 };
 
 // Ring buffer entry — compact struct for the SPSC poll path.
@@ -87,8 +87,8 @@ struct SomeIpRingEntry {
     uint16_t service_id;
     uint16_t instance_id;
     uint16_t method_id;
-    uint8_t  message_type;
-    uint8_t  return_code;
+    uint8_t message_type;
+    uint8_t return_code;
     uint32_t payload_len;
     // Payload data follows in a separate buffer managed by the ring buffer.
     // This struct only carries the header; the caller copies payload bytes

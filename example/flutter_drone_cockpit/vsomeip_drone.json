@@ -1,0 +1,53 @@
+{
+    "unicast": "127.0.0.1",
+    "logging": {
+        "level": "info",
+        "console": "true"
+    },
+    "applications": [
+        {
+            "name": "drone_sim",
+            "id": "0x2001"
+        },
+        {
+            "name": "drone_cockpit",
+            "id": "0x2002"
+        }
+    ],
+    "routing": "drone_sim",
+    "service-discovery": {
+        "enable": "true",
+        "multicast": "224.224.224.2",
+        "port": "30491",
+        "protocol": "udp",
+        "initial_delay_min": "10",
+        "initial_delay_max": "100",
+        "repetitions_base_delay": "200",
+        "repetitions_max": "3",
+        "ttl": "3",
+        "offer_debounce_time": "500"
+    },
+    "services": [
+        {
+            "service": "0x2000",
+            "instance": "0x0001",
+            "reliable": { "port": "0" },
+            "events": [
+                { "event": "0x9001", "is_field": false, "is_reliable": false },
+                { "event": "0x9002", "is_field": false, "is_reliable": false },
+                { "event": "0x9003", "is_field": false, "is_reliable": false },
+                { "event": "0x9004", "is_field": false, "is_reliable": false },
+                { "event": "0x9005", "is_field": false, "is_reliable": false },
+                { "event": "0x9006", "is_field": false, "is_reliable": false }
+            ],
+            "eventgroups": [
+                {
+                    "eventgroup": "0x0001",
+                    "events": [
+                        "0x9001", "0x9002", "0x9003", "0x9004", "0x9005", "0x9006"
+                    ]
+                }
+            ]
+        }
+    ]
+}

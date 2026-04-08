@@ -24,20 +24,21 @@
 
 #pragma once
 
-#include "vsomeip_types.h"
-
 #include <cstdint>
 #include <cstring>
 #include <functional>
 #include <vector>
 
+#include "vsomeip_types.h"
+
 // Callback for posting encoded messages to Dart.
 // Parameters: (header_data, header_len, payload_data, payload_len)
 // header_data includes the discriminator byte prefix.
 // payload_data may be nullptr if payload_len == 0.
-using MessagePostFn = std::function<void(
-    const uint8_t* header_data, uint32_t header_len,
-    const uint8_t* payload_data, uint32_t payload_len)>;
+using MessagePostFn = std::function<void(const uint8_t* header_data,
+                                         uint32_t header_len,
+                                         const uint8_t* payload_data,
+                                         uint32_t payload_len)>;
 
 class VsomeipSubscriber {
 public:

@@ -47,6 +47,16 @@ void main(List<String> args) async {
     // Priority: VSOMEIP_PATH env → system pkg-config → git submodule build
     final (vsomeipInclude, vsomeipLib) = await _locateVsomeip(pkgDir, outDir);
 
+    // ── Generate Cap'n Proto Dart bindings ──────────────────────────────────
+    // Priority: jwinarske/capnpc-dart plugin → fall back to the in-tree
+    // Python packed-layout generator. The plugin produces canonical
+    // wire-format readers; the Python script produces the legacy packed
+    // layout used by older committed bindings. We never overwrite hand-
+    // edited files (the plugin overwrites; the Python script skips).
+    if (Platform.environment['VSOMEIP_SKIP_CAPNP'] != '1') {
+      await _generateCapnpDart(pkgDir, outDir);
+    }
+
     // ── Compile the bridge ──────────────────────────────────────────────────
     final ext = os == OS.macOS ? '.dylib' : '.so';
     final libOut = '$outDir/libvsomeip_bridge$ext';
@@ -172,6 +182,156 @@ Future<(String, String)> _buildVsomeipSubmodule(
   return ('$outDir/vsomeip_install/include', '$outDir/vsomeip_install/lib');
 }
 
+// ── Cap'n Proto Dart binding generation ─────────────────────────────────────────
+//
+// Resolution order for the `capnpc-dart` plugin:
+//   1. CAPNPC_DART env var pointing at the binary
+//   2. `capnpc-dart` on PATH
+//   3. Build it from the third_party/capnpc-dart submodule and cache the
+//      binary under $outDir/capnpc-dart-build/capnpc-dart.
+//
+// If `capnp` itself is not on PATH, or all of the above fail, fall back to
+// `tool/capnp_dart_gen.py` (pure-Python, packed layout). The fallback never
+// breaks the build — capnp Dart bindings are optional codegen.
+
+Future<void> _generateCapnpDart(String pkgDir, String outDir) async {
+  final schemaDir = '$pkgDir/schemas';
+  final libGen = '$pkgDir/lib/generated';
+  if (!Directory(schemaDir).existsSync()) {
+    return;
+  }
+
+  // Need `capnp` itself for either path.
+  final capnpAvail = await _which('capnp');
+  if (capnpAvail == null) {
+    stdout.writeln(
+      '[vsomeip_dart hook] capnp not on PATH — skipping Cap\'n Proto Dart codegen',
+    );
+    return;
+  }
+
+  final plugin = await _locateCapnpcDart(pkgDir, outDir);
+  final schemas = Directory(schemaDir)
+      .listSync()
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.capnp'))
+      .toList();
+
+  if (plugin != null) {
+    stdout.writeln('[vsomeip_dart hook] Using capnpc-dart plugin: $plugin');
+    // Make the plugin discoverable to `capnp compile -odart` by ensuring its
+    // directory is on PATH for the child process.
+    final pluginDir = File(plugin).parent.path;
+    final env = <String, String>{
+      'PATH': '$pluginDir:${Platform.environment['PATH'] ?? ''}',
+    };
+    Directory(libGen).createSync(recursive: true);
+    for (final schema in schemas) {
+      // capnpc-dart writes <schema>.capnp.dart next to the schema. We move
+      // it into lib/generated/ after to keep schemas/ clean.
+      try {
+        await _runEnv('capnp', ['compile', '-odart', schema.path], env: env);
+        final produced = File('${schema.path}.dart');
+        if (produced.existsSync()) {
+          final dest = '$libGen/${schema.uri.pathSegments.last}.dart';
+          produced.renameSync(dest);
+          stdout.writeln(
+            '[vsomeip_dart hook]   ${schema.uri.pathSegments.last} -> $dest',
+          );
+        }
+      } catch (e) {
+        stderr.writeln(
+          '[vsomeip_dart hook] capnpc-dart failed for ${schema.path}: $e',
+        );
+        // Don't fall back per-file — bail out and let the Python fallback
+        // run for the whole batch instead.
+        await _generateCapnpDartPython(pkgDir);
+        return;
+      }
+    }
+    return;
+  }
+
+  // No plugin available — fall back to the Python generator.
+  await _generateCapnpDartPython(pkgDir);
+}
+
+Future<String?> _locateCapnpcDart(String pkgDir, String outDir) async {
+  // 1. Explicit env override.
+  final env = Platform.environment['CAPNPC_DART'];
+  if (env != null && File(env).existsSync()) {
+    return env;
+  }
+
+  // 2. Already on PATH.
+  final onPath = await _which('capnpc-dart');
+  if (onPath != null) {
+    return onPath;
+  }
+
+  // 3. Build from submodule (cached under outDir).
+  final srcDir = '$pkgDir/third_party/capnpc-dart';
+  if (!Directory(srcDir).existsSync()) {
+    return null;
+  }
+  final buildDir = '$outDir/capnpc-dart-build';
+  final binary = '$buildDir/capnpc-dart';
+  if (File(binary).existsSync()) {
+    return binary;
+  }
+  stdout.writeln(
+    '[vsomeip_dart hook] Building capnpc-dart plugin from submodule...',
+  );
+  try {
+    await _run('cmake', [
+      '-B',
+      buildDir,
+      srcDir,
+      '-GNinja',
+      '-DCMAKE_BUILD_TYPE=Release',
+    ]);
+    await _run('ninja', ['-C', buildDir, 'capnpc-dart']);
+  } catch (e) {
+    stderr.writeln(
+      '[vsomeip_dart hook] capnpc-dart submodule build failed: $e',
+    );
+    return null;
+  }
+  return File(binary).existsSync() ? binary : null;
+}
+
+Future<void> _generateCapnpDartPython(String pkgDir) async {
+  final script = '$pkgDir/tool/capnp_dart_gen.py';
+  if (!File(script).existsSync()) {
+    return;
+  }
+  stdout.writeln(
+    '[vsomeip_dart hook] Falling back to Python capnp_dart_gen.py (packed layout)',
+  );
+  try {
+    await _run('python3', [
+      script,
+      '--schema-dir',
+      '$pkgDir/schemas',
+      '--output-dir',
+      '$pkgDir/lib/generated',
+    ]);
+  } catch (e) {
+    stderr.writeln('[vsomeip_dart hook] Python capnp generator failed: $e');
+  }
+}
+
+Future<String?> _which(String exe) async {
+  try {
+    final r = await Process.run('which', [exe]);
+    if (r.exitCode != 0) return null;
+    final p = r.stdout.toString().trim();
+    return p.isEmpty ? null : p;
+  } catch (_) {
+    return null;
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────────
 
 Future<void> _run(
@@ -183,6 +343,27 @@ Future<void> _run(
   final r = await Process.run(
     exe,
     args,
+    workingDirectory: workingDirectory,
+    runInShell: true,
+  );
+  if (r.exitCode != 0) {
+    stderr.writeln(r.stderr);
+    throw ProcessException(exe, args, r.stderr.toString(), r.exitCode);
+  }
+}
+
+Future<void> _runEnv(
+  String exe,
+  List<String> args, {
+  Map<String, String>? env,
+  String? workingDirectory,
+}) async {
+  stdout.writeln('[vsomeip_dart hook] $exe ${args.join(' ')}');
+  final r = await Process.run(
+    exe,
+    args,
+    environment: env,
+    includeParentEnvironment: true,
     workingDirectory: workingDirectory,
     runInShell: true,
   );

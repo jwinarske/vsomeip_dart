@@ -119,6 +119,14 @@ client.setThrottle(
 
 ## Quick Start
 
+First time setup — fetch git submodules (vsomeip + capnpc-dart):
+
+```sh
+git submodule update --init --recursive
+```
+
+Then write Dart against the high-level API:
+
 ```dart
 import 'package:vsomeip_dart/vsomeip_dart.dart';
 
@@ -147,6 +155,7 @@ service.notify(eventId: 0x8001, payload: data);
 - [`offer_service.dart`](example/offer_service.dart) — act as a SOME/IP service provider
 - [`high_frequency.dart`](example/high_frequency.dart) — 1 kHz signal with throttled UI
 - [`flutter_vehicle_app/`](example/flutter_vehicle_app/) — Flutter dashboard with live sensors
+- [`flutter_drone_cockpit/`](example/flutter_drone_cockpit/) — Flutter drone cockpit (artificial horizon, compass, tapes, VSI, gimbal, joysticks → fire-and-forget control input)
 - [`capnp/zero_copy_receive.dart`](example/capnp/zero_copy_receive.dart) — Cap'n Proto Path A raw passthrough
 - [`capnp/selective_decode.dart`](example/capnp/selective_decode.dart) — Cap'n Proto Path B selective decode
 - [`capnp/service_publish.dart`](example/capnp/service_publish.dart) — Cap'n Proto zero-copy send
@@ -183,8 +192,29 @@ struct VehicleSpeed {
 }
 ```
 
-The build hook compiles schemas to C++ headers and generates Dart FFI
-bindings via `tools/capnp_dart_gen.py`.
+The build hook compiles schemas to C++ headers and generates Dart bindings.
+Two generators are supported, with the hook resolving them in order:
+
+1. **[`capnpc-dart`](https://github.com/jwinarske/capnpc-dart)** (preferred) —
+   a `capnp compile -odart` plugin written in C++ that emits canonical
+   Cap'n Proto wire-format readers (data section + pointer section, bounds
+   checked, no runtime dependency). The hook locates it in this order:
+   `CAPNPC_DART` env → `capnpc-dart` on `PATH` → built from the
+   `third_party/capnpc-dart` submodule and cached under the build dir.
+2. **`tool/capnp_dart_gen.py`** (fallback) — pure-Python generator that
+   parses `.capnp` text directly and emits a packed-layout `Reader`/
+   `Builder` pair. Used when `capnp` or `capnpc-dart` are unavailable, and
+   when no clean upgrade path exists. Skips files that already exist;
+   pass `--force` to overwrite.
+
+To skip codegen entirely, set `VSOMEIP_SKIP_CAPNP=1` before running the
+hook. Both generators target `lib/generated/`.
+
+> **Note on Dart-side builders.** `capnpc-dart` currently emits Builder
+> stubs only for scalars and enums; Text/Data write paths are not yet
+> implemented upstream. If you need to *send* a Cap'n Proto message
+> from Dart that contains Text or Data fields (e.g. `Infotainment`), use
+> the Python-generated builder until upstream support lands.
 
 ### Zero-Copy Read (Path A)
 

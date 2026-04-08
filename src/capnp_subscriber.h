@@ -28,26 +28,27 @@
 
 #pragma once
 
-#include "capnp_bridge.h"
-#include "vsomeip_subscriber.h"
-#include "vsomeip_types.h"
-
 #include <cstdint>
 #include <cstring>
 #include <functional>
 #include <vector>
 
+#include "capnp_bridge.h"
+#include "vsomeip_subscriber.h"
+#include "vsomeip_types.h"
+
 // Callback for posting raw Cap'n Proto payload + SOME/IP header to Dart.
 // Parameters: (header_data, header_len, payload_data, payload_len, was_aligned)
-using CapnpPostFn = std::function<void(
-    const uint8_t* header_data, uint32_t header_len,
-    const uint8_t* payload_data, uint32_t payload_len,
-    bool was_aligned)>;
+using CapnpPostFn = std::function<void(const uint8_t* header_data,
+                                       uint32_t header_len,
+                                       const uint8_t* payload_data,
+                                       uint32_t payload_len,
+                                       bool was_aligned)>;
 
 // Callback for posting selectively decoded fields to Dart.
 // Parameters: (schema_id, decoded_data, decoded_len)
-using CapnpDecodedPostFn = std::function<void(
-    uint32_t schema_id, const uint8_t* data, uint32_t len)>;
+using CapnpDecodedPostFn =
+    std::function<void(uint32_t schema_id, const uint8_t* data, uint32_t len)>;
 
 class CapnpSubscriber {
 public:
@@ -68,8 +69,8 @@ public:
     /// Encode a SOME/IP header with Cap'n Proto discriminator (0x01)
     /// and schema_id appended after the standard 21-byte header.
     /// Wire format: [disc=0x01][header 20B][schema_id 4B LE] = 25 bytes.
-    static std::vector<uint8_t> encode_capnp_header(
-        const VsomeipMessageHeader& hdr, uint32_t schema_id);
+    static std::vector<uint8_t> encode_capnp_header(const VsomeipMessageHeader& hdr,
+                                                    uint32_t schema_id);
 
     uint32_t schema_id() const { return schema_id_; }
 
@@ -82,8 +83,8 @@ private:
 /// Uses registered schema handlers to extract only UI-relevant fields.
 class CapnpSelectiveDecoder {
 public:
-    using DecodeHandler = std::function<std::vector<uint8_t>(
-        const uint8_t* payload, uint32_t payload_len)>;
+    using DecodeHandler =
+        std::function<std::vector<uint8_t>(const uint8_t* payload, uint32_t payload_len)>;
 
     /// Register a decode handler for a schema.
     void register_schema(uint32_t schema_id, DecodeHandler handler);
