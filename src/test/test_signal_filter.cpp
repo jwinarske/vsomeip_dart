@@ -8,10 +8,10 @@
 //        http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#include "../signal_filter.h"
-
-#include <gtest/gtest.h>
 #include <cstring>
+#include <gtest/gtest.h>
+
+#include "../signal_filter.h"
 
 // ── PassthroughFilter ───────────────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ TEST(EmaFilter, FirstSampleReturnsInput) {
 
 TEST(EmaFilter, SmoothsTowardSetpoint) {
     EmaFilter f(0.2f);  // alpha = 0.2 → heavy smoothing
-    f.apply(0.0f);       // initial
+    f.apply(0.0f);      // initial
     auto v1 = f.apply(100.0f);
     auto v2 = f.apply(100.0f);
     auto v3 = f.apply(100.0f);
@@ -54,8 +54,8 @@ TEST(EmaFilter, ResetClearsState) {
 }
 
 TEST(EmaFilter, ClampsAlphaToValidRange) {
-    EmaFilter f1(-1.0f);   // clamped to ~0
-    EmaFilter f2(2.0f);    // clamped to 1
+    EmaFilter f1(-1.0f);  // clamped to ~0
+    EmaFilter f2(2.0f);   // clamped to 1
     f1.apply(0.0f);
     f2.apply(0.0f);
     // f1: very heavy smoothing, f2: passthrough
@@ -73,7 +73,8 @@ TEST(Lowpass1Filter, FirstSampleReturnsInput) {
 TEST(Lowpass1Filter, ConvergesToSteadyState) {
     Lowpass1Filter f(5.0f, 100.0f);
     f.apply(0.0f);
-    for (int i = 0; i < 200; ++i) f.apply(100.0f);
+    for (int i = 0; i < 200; ++i)
+        f.apply(100.0f);
     // Should be close to 100 after many samples
     EXPECT_NEAR(f.apply(100.0f), 100.0f, 0.5f);
 }
@@ -318,8 +319,8 @@ TEST(FilterRegistry, ReplaceFilterAtOffsetResetsThatOffsetOnly) {
     float a, b;
     std::memcpy(&a, payload + 0, 4);
     std::memcpy(&b, payload + 4, 4);
-    EXPECT_FLOAT_EQ(a, 50.0f);   // reset → first sample
-    EXPECT_FLOAT_EQ(b, 75.0f);   // 0.5 * 50 + 0.5 * 100 = 75
+    EXPECT_FLOAT_EQ(a, 50.0f);  // reset → first sample
+    EXPECT_FLOAT_EQ(b, 75.0f);  // 0.5 * 50 + 0.5 * 100 = 75
 }
 
 TEST(FilterRegistry, ClearFilterAtRemovesOnlyOneOffset) {

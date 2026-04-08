@@ -23,11 +23,11 @@
 //   - Builder overflow protection
 //   - All three schema builders (VehicleSpeed, RadarObject, ImuData)
 
-#include "../capnp_service.h"
-
-#include <gtest/gtest.h>
 #include <cmath>
 #include <cstring>
+#include <gtest/gtest.h>
+
+#include "../capnp_service.h"
 
 // ── Helper: read LE values from buffer ──────────────────────────────────────
 
@@ -143,8 +143,7 @@ TEST(CapnpService, RadarObjectCorrectSize) {
 }
 
 TEST(CapnpService, RadarObjectFieldRoundtrip) {
-    auto buf = capnp_build_radar_object(
-        100, 25.5f, -3.2f, 15.0f, -10.5f, 9999ULL, 1);
+    auto buf = capnp_build_radar_object(100, 25.5f, -3.2f, 15.0f, -10.5f, 9999ULL, 1);
 
     EXPECT_EQ(read_uint16(buf.data() + 0), 100);
     EXPECT_FLOAT_EQ(read_float32(buf.data() + 4), 25.5f);
@@ -163,8 +162,7 @@ TEST(CapnpService, ImuDataCorrectSize) {
 }
 
 TEST(CapnpService, ImuDataFieldRoundtrip) {
-    auto buf = capnp_build_imu_data(
-        1.0f, -2.0f, 9.8f, 0.01f, -0.02f, 0.03f, 5555ULL, 7);
+    auto buf = capnp_build_imu_data(1.0f, -2.0f, 9.8f, 0.01f, -0.02f, 0.03f, 5555ULL, 7);
 
     EXPECT_FLOAT_EQ(read_float32(buf.data() + 0), 1.0f);
     EXPECT_FLOAT_EQ(read_float32(buf.data() + 4), -2.0f);

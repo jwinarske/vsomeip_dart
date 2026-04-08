@@ -11,13 +11,19 @@ import 'bindings.dart';
 class NativeVsomeipBindings implements VsomeipBindings {
   final DynamicLibrary _lib;
   NativeVsomeipBindings._(this._lib) {
-    // Initialize the bridge with Dart API DL
+    // The bridge needs Dart's runtime API table to post messages back to
+    // the Dart isolate via Dart_PostCObject_DL. Passing nullptr here
+    // causes Dart_InitializeApiDL to dereference null and segfault inside
+    // the bridge's vsomeip_bridge_init.
     final init = _lib
         .lookupFunction<
-          Void Function(Pointer<Void>),
-          void Function(Pointer<Void>)
+          Int32 Function(Pointer<Void>),
+          int Function(Pointer<Void>)
         >('vsomeip_bridge_init');
-    init(nullptr); // Pass NativeApi.initializeApiDLData in production
+    final rc = init(NativeApi.initializeApiDLData);
+    if (rc != 0) {
+      throw StateError('vsomeip_bridge_init failed with code $rc');
+    }
   }
 
   /// Load from a specific path.

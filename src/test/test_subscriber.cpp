@@ -25,13 +25,13 @@
 //   - Rapid-fire 10k messages with no drops
 //   - Request ID encoding (client_id << 16 | session_id)
 
-#include "../vsomeip_subscriber.h"
-#include "../vsomeip_types.h"
-
-#include <gtest/gtest.h>
 #include <cstring>
+#include <gtest/gtest.h>
 #include <mutex>
 #include <vector>
+
+#include "../vsomeip_subscriber.h"
+#include "../vsomeip_types.h"
 
 // ── Captured post data ──────────────────────────────────────────────────────────
 
@@ -42,8 +42,7 @@ struct PostedMessage {
 
 class PostCapture {
 public:
-    void post(const uint8_t* hdr, uint32_t hdr_len,
-              const uint8_t* payload, uint32_t payload_len) {
+    void post(const uint8_t* hdr, uint32_t hdr_len, const uint8_t* payload, uint32_t payload_len) {
         std::lock_guard<std::mutex> lock(mutex_);
         PostedMessage msg;
         msg.header.assign(hdr, hdr + hdr_len);
@@ -75,10 +74,8 @@ static uint16_t read_u16_le(const uint8_t* p) {
 }
 
 static uint32_t read_u32_le(const uint8_t* p) {
-    return static_cast<uint32_t>(p[0]) |
-           (static_cast<uint32_t>(p[1]) << 8) |
-           (static_cast<uint32_t>(p[2]) << 16) |
-           (static_cast<uint32_t>(p[3]) << 24);
+    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) |
+           (static_cast<uint32_t>(p[2]) << 16) | (static_cast<uint32_t>(p[3]) << 24);
 }
 
 static uint64_t read_u64_le(const uint8_t* p) {
@@ -96,13 +93,13 @@ static VsomeipMessageHeader decode_wire_header(const std::vector<uint8_t>& hdr) 
     EXPECT_EQ(hdr[0], vsomeip_disc::kMessage);
 
     VsomeipMessageHeader decoded{};
-    decoded.service_id   = read_u16_le(&hdr[1]);
-    decoded.instance_id  = read_u16_le(&hdr[3]);
-    decoded.method_id    = read_u16_le(&hdr[5]);
+    decoded.service_id = read_u16_le(&hdr[1]);
+    decoded.instance_id = read_u16_le(&hdr[3]);
+    decoded.method_id = read_u16_le(&hdr[5]);
     decoded.message_type = hdr[7];
-    decoded.return_code  = hdr[8];
-    decoded.request_id   = read_u64_le(&hdr[9]);
-    decoded.payload_len  = read_u32_le(&hdr[17]);
+    decoded.return_code = hdr[8];
+    decoded.request_id = read_u64_le(&hdr[9]);
+    decoded.payload_len = read_u32_le(&hdr[17]);
     return decoded;
 }
 
@@ -117,35 +114,33 @@ TEST(Subscriber, EncodeHeaderSize) {
 
 TEST(Subscriber, EncodeHeaderFieldsRoundtrip) {
     VsomeipMessageHeader hdr{
-        .service_id   = 0xAAAA,
-        .instance_id  = 0xBBBB,
-        .method_id    = 0xCCCC,
+        .service_id = 0xAAAA,
+        .instance_id = 0xBBBB,
+        .method_id = 0xCCCC,
         .message_type = 0x80,
-        .return_code  = 0x01,
-        .request_id   = 0x123456789ABCDEF0,
-        .payload_len  = 65535,
+        .return_code = 0x01,
+        .request_id = 0x123456789ABCDEF0,
+        .payload_len = 65535,
     };
     auto bytes = VsomeipSubscriber::encode_header(hdr);
     auto decoded = decode_wire_header(bytes);
 
-    EXPECT_EQ(decoded.service_id,   0xAAAA);
-    EXPECT_EQ(decoded.instance_id,  0xBBBB);
-    EXPECT_EQ(decoded.method_id,    0xCCCC);
+    EXPECT_EQ(decoded.service_id, 0xAAAA);
+    EXPECT_EQ(decoded.instance_id, 0xBBBB);
+    EXPECT_EQ(decoded.method_id, 0xCCCC);
     EXPECT_EQ(decoded.message_type, 0x80);
-    EXPECT_EQ(decoded.return_code,  0x01);
-    EXPECT_EQ(decoded.request_id,   0x123456789ABCDEF0);
-    EXPECT_EQ(decoded.payload_len,  65535u);
+    EXPECT_EQ(decoded.return_code, 0x01);
+    EXPECT_EQ(decoded.request_id, 0x123456789ABCDEF0);
+    EXPECT_EQ(decoded.payload_len, 65535u);
 }
 
 TEST(Subscriber, ZeroLengthPayloadPostsNullPayload) {
     PostCapture capture;
-    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl,
-                              const uint8_t* p, uint32_t pl) {
+    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl, const uint8_t* p, uint32_t pl) {
         capture.post(h, hl, p, pl);
     });
 
-    sub.on_message(0x1234, 0x0001, 0x0001, 0x02, 0x00,
-                   0x00, 0x01, nullptr, 0);
+    sub.on_message(0x1234, 0x0001, 0x0001, 0x02, 0x00, 0x00, 0x01, nullptr, 0);
 
     auto msgs = capture.messages();
     ASSERT_EQ(msgs.size(), 1u);
@@ -158,14 +153,12 @@ TEST(Subscriber, ZeroLengthPayloadPostsNullPayload) {
 
 TEST(Subscriber, NonZeroPayloadIsForwarded) {
     PostCapture capture;
-    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl,
-                              const uint8_t* p, uint32_t pl) {
+    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl, const uint8_t* p, uint32_t pl) {
         capture.post(h, hl, p, pl);
     });
 
     const uint8_t payload[] = {0xDE, 0xAD, 0xBE, 0xEF};
-    sub.on_message(0x1234, 0x0001, 0x0001, 0x02, 0x00,
-                   0x00, 0x01, payload, 4);
+    sub.on_message(0x1234, 0x0001, 0x0001, 0x02, 0x00, 0x00, 0x01, payload, 4);
 
     auto msgs = capture.messages();
     ASSERT_EQ(msgs.size(), 1u);
@@ -178,15 +171,13 @@ TEST(Subscriber, NonZeroPayloadIsForwarded) {
 
 TEST(Subscriber, RequestIdEncoding) {
     PostCapture capture;
-    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl,
-                              const uint8_t* p, uint32_t pl) {
+    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl, const uint8_t* p, uint32_t pl) {
         capture.post(h, hl, p, pl);
     });
 
     // client_id = 0x1234, session_id = 0x5678
     // request_id = (0x1234 << 16) | 0x5678 = 0x12345678
-    sub.on_message(0x0100, 0x0001, 0x8001, 0x00, 0x00,
-                   0x1234, 0x5678, nullptr, 0);
+    sub.on_message(0x0100, 0x0001, 0x8001, 0x00, 0x00, 0x1234, 0x5678, nullptr, 0);
 
     auto msgs = capture.messages();
     auto decoded = decode_wire_header(msgs[0].header);
@@ -195,36 +186,40 @@ TEST(Subscriber, RequestIdEncoding) {
 
 TEST(Subscriber, AllHeaderFieldsFromOnMessage) {
     PostCapture capture;
-    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl,
-                              const uint8_t* p, uint32_t pl) {
+    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl, const uint8_t* p, uint32_t pl) {
         capture.post(h, hl, p, pl);
     });
 
     const uint8_t payload[] = {0x01, 0x02};
-    sub.on_message(0xFFFF, 0x0002, 0x8001, 0x80, 0x03,
-                   0xABCD, 0xEF01, payload, 2);
+    sub.on_message(0xFFFF, 0x0002, 0x8001, 0x80, 0x03, 0xABCD, 0xEF01, payload, 2);
 
     auto msgs = capture.messages();
     auto decoded = decode_wire_header(msgs[0].header);
-    EXPECT_EQ(decoded.service_id,   0xFFFF);
-    EXPECT_EQ(decoded.instance_id,  0x0002);
-    EXPECT_EQ(decoded.method_id,    0x8001);
+    EXPECT_EQ(decoded.service_id, 0xFFFF);
+    EXPECT_EQ(decoded.instance_id, 0x0002);
+    EXPECT_EQ(decoded.method_id, 0x8001);
     EXPECT_EQ(decoded.message_type, 0x80);
-    EXPECT_EQ(decoded.return_code,  0x03);
-    EXPECT_EQ(decoded.request_id,   (uint64_t(0xABCD) << 16) | 0xEF01);
-    EXPECT_EQ(decoded.payload_len,  2u);
+    EXPECT_EQ(decoded.return_code, 0x03);
+    EXPECT_EQ(decoded.request_id, (uint64_t(0xABCD) << 16) | 0xEF01);
+    EXPECT_EQ(decoded.payload_len, 2u);
 }
 
 TEST(Subscriber, LargePayload1MB) {
     PostCapture capture;
-    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl,
-                              const uint8_t* p, uint32_t pl) {
+    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl, const uint8_t* p, uint32_t pl) {
         capture.post(h, hl, p, pl);
     });
 
     std::vector<uint8_t> big(1024 * 1024, 0xAB);
-    sub.on_message(0x1234, 0x0001, 0x0001, 0x02, 0x00,
-                   0x00, 0x01, big.data(), static_cast<uint32_t>(big.size()));
+    sub.on_message(0x1234,
+                   0x0001,
+                   0x0001,
+                   0x02,
+                   0x00,
+                   0x00,
+                   0x01,
+                   big.data(),
+                   static_cast<uint32_t>(big.size()));
 
     auto msgs = capture.messages();
     ASSERT_EQ(msgs.size(), 1u);
@@ -238,17 +233,15 @@ TEST(Subscriber, LargePayload1MB) {
 
 TEST(Subscriber, RapidFire10kMessages) {
     PostCapture capture;
-    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl,
-                              const uint8_t* p, uint32_t pl) {
+    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl, const uint8_t* p, uint32_t pl) {
         capture.post(h, hl, p, pl);
     });
 
     constexpr int N = 10000;
     for (int i = 0; i < N; ++i) {
         uint8_t byte = static_cast<uint8_t>(i & 0xFF);
-        sub.on_message(0x1234, 0x0001, 0x0001, 0x02, 0x00,
-                       0x00, static_cast<uint16_t>(i & 0xFFFF),
-                       &byte, 1);
+        sub.on_message(
+            0x1234, 0x0001, 0x0001, 0x02, 0x00, 0x00, static_cast<uint16_t>(i & 0xFFFF), &byte, 1);
     }
 
     EXPECT_EQ(capture.count(), static_cast<size_t>(N));
@@ -256,15 +249,13 @@ TEST(Subscriber, RapidFire10kMessages) {
 
 TEST(Subscriber, DiscriminatorIsAlwaysMessage) {
     PostCapture capture;
-    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl,
-                              const uint8_t* p, uint32_t pl) {
+    VsomeipSubscriber sub([&](const uint8_t* h, uint32_t hl, const uint8_t* p, uint32_t pl) {
         capture.post(h, hl, p, pl);
     });
 
     // Various message types should all use kMessage discriminator
     for (uint8_t mt : {0x00, 0x02, 0x80, 0x81}) {
-        sub.on_message(0x0100, 0x0001, 0x0001, mt, 0x00,
-                       0x00, 0x01, nullptr, 0);
+        sub.on_message(0x0100, 0x0001, 0x0001, mt, 0x00, 0x00, 0x01, nullptr, 0);
     }
 
     auto msgs = capture.messages();

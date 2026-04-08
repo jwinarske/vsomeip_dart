@@ -16,3 +16,8 @@ coverage/
 
 # Don't ignore lib/ — it contains Dart source
 !lib/
+
+# Don't let build*/ / *.so / *.dylib rules match inside vendored submodules.
+# Pub-archive exclusion of third_party/ is handled by .pubignore.
+!third_party/
+!third_party/**

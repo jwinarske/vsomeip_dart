@@ -16,17 +16,17 @@
 
 // Covers: empty read, full write, wrap-around, drain, concurrent access.
 
+#include <atomic>
+#include <gtest/gtest.h>
+#include <thread>
+
 #include "../ring_buffer.h"
 #include "../vsomeip_types.h"
-
-#include <gtest/gtest.h>
-#include <atomic>
-#include <thread>
 
 TEST(RingBuffer, EmptyReadReturnsZero) {
     auto rb = spsc_ring_buffer<SomeIpRingEntry, 8>::create();
     SomeIpRingEntry out;
-    EXPECT_FALSE(rb->pop(out));   // empty branch
+    EXPECT_FALSE(rb->pop(out));  // empty branch
 }
 
 TEST(RingBuffer, SinglePushPop) {
@@ -45,7 +45,7 @@ TEST(RingBuffer, FullBufferDropsNewEntry) {
     for (int i = 0; i < 7; ++i) {
         EXPECT_TRUE(rb->push(SomeIpRingEntry{.service_id = static_cast<uint16_t>(i)}));
     }
-    EXPECT_FALSE(rb->push(SomeIpRingEntry{.service_id = 99})); // full branch
+    EXPECT_FALSE(rb->push(SomeIpRingEntry{.service_id = 99}));  // full branch
 }
 
 TEST(RingBuffer, WrapAround) {
@@ -84,7 +84,7 @@ TEST(RingBuffer, CapacityConstant) {
 
 TEST(RingBuffer, DrainAll) {
     auto rb = spsc_ring_buffer<SomeIpRingEntry, 16>::create();
-    constexpr int count = 15; // max usable slots
+    constexpr int count = 15;  // max usable slots
     for (int i = 0; i < count; ++i) {
         EXPECT_TRUE(rb->push(SomeIpRingEntry{.service_id = static_cast<uint16_t>(i)}));
     }
@@ -93,7 +93,7 @@ TEST(RingBuffer, DrainAll) {
         ASSERT_TRUE(rb->pop(out));
         EXPECT_EQ(out.service_id, static_cast<uint16_t>(i));
     }
-    EXPECT_FALSE(rb->pop(out)); // now empty
+    EXPECT_FALSE(rb->pop(out));  // now empty
     EXPECT_TRUE(rb->empty());
 }
 
@@ -106,13 +106,15 @@ TEST(RingBuffer, ConcurrentProducerConsumer) {
     std::thread producer([&] {
         for (int i = 0; i < N; ++i) {
             SomeIpRingEntry e{.service_id = static_cast<uint16_t>(i & 0xFFFF)};
-            while (!rb->push(e)) { /* back-pressure: retry */ }
+            while (!rb->push(e)) { /* back-pressure: retry */
+            }
         }
     });
     std::thread consumer([&] {
         SomeIpRingEntry e;
         while (consumed.load() < N) {
-            if (rb->pop(e)) consumed.fetch_add(1);
+            if (rb->pop(e))
+                consumed.fetch_add(1);
         }
     });
 

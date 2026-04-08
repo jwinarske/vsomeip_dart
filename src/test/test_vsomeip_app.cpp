@@ -26,18 +26,18 @@
 // The tests do NOT require the real vsomeip library. They operate on
 // the VsomeipApp interface through the PostFn callback mechanism.
 
-#include "../vsomeip_types.h"
-
-#include <gtest/gtest.h>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstring>
 #include <functional>
+#include <gtest/gtest.h>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "../vsomeip_types.h"
 
 // ── Captured wire message ───────────────────────────────────────────────────────
 
@@ -62,8 +62,7 @@ public:
     bool wait_for(size_t count,
                   std::chrono::milliseconds timeout = std::chrono::milliseconds(1000)) {
         std::unique_lock<std::mutex> lock(mutex_);
-        return cv_.wait_for(lock, timeout,
-                            [&] { return messages_.size() >= count; });
+        return cv_.wait_for(lock, timeout, [&] { return messages_.size() >= count; });
     }
 
 private:
@@ -187,8 +186,7 @@ TEST(VsomeipAppWire, MultipleMessagesInSequence) {
     post_fn(vsomeip_disc::kState, state1, 2);
 
     VsomeipAvailability avail{0x1000, 0x0001, true};
-    post_fn(vsomeip_disc::kAvailability,
-            reinterpret_cast<const uint8_t*>(&avail), sizeof(avail));
+    post_fn(vsomeip_disc::kAvailability, reinterpret_cast<const uint8_t*>(&avail), sizeof(avail));
 
     uint8_t state2[] = {0, 'a'};
     post_fn(vsomeip_disc::kState, state2, 2);
@@ -213,7 +211,8 @@ TEST(VsomeipAppWire, ConcurrentPostsNoDataLoss) {
         for (int i = 0; i < N; ++i) {
             VsomeipAvailability avail{static_cast<uint16_t>(i), 0x0001, true};
             post_fn(vsomeip_disc::kAvailability,
-                    reinterpret_cast<const uint8_t*>(&avail), sizeof(avail));
+                    reinterpret_cast<const uint8_t*>(&avail),
+                    sizeof(avail));
         }
     });
     std::thread t2([&] {
@@ -232,8 +231,10 @@ TEST(VsomeipAppWire, ConcurrentPostsNoDataLoss) {
     int avail_count = 0;
     int state_count = 0;
     for (const auto& m : msgs) {
-        if (m.disc == vsomeip_disc::kAvailability) ++avail_count;
-        if (m.disc == vsomeip_disc::kState) ++state_count;
+        if (m.disc == vsomeip_disc::kAvailability)
+            ++avail_count;
+        if (m.disc == vsomeip_disc::kState)
+            ++state_count;
     }
     EXPECT_EQ(avail_count, N);
     EXPECT_EQ(state_count, N);

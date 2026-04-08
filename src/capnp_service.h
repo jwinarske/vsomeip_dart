@@ -74,7 +74,11 @@ public:
     size_t size_in_words() const { return (buf_.size() + kCapnpWordSize - 1) / kCapnpWordSize; }
 
     /// Get ownership of the buffer.
-    std::vector<uint8_t> take() { return std::move(buf_); }
+    std::vector<uint8_t> take() {
+        std::vector<uint8_t> out = std::move(buf_);
+        buf_.clear();
+        return out;
+    }
 
     /// Check if the buffer is 8-byte aligned (always true for heap alloc).
     bool is_aligned() const { return is_capnp_aligned(buf_.data()); }

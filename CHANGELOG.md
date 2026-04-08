@@ -4,8 +4,10 @@
   request/response, fire-and-forget, service offer/notify (PRs 1–9).
 - Cap'n Proto receive (Path A + B) and send paths (PRs 10–13).
 - Two Cap'n Proto Dart generators: jwinarske/capnpc-dart (preferred,
-  canonical wire format) wired into `hooks/build.dart` with the in-tree
-  Python generator as fallback. New `third_party/capnpc-dart` submodule.
+  canonical wire format with full scalar/enum/Text/Data Reader and
+  Builder support) wired into `hooks/build.dart` with the in-tree
+  Python generator as fallback. New `third_party/capnpc-dart` submodule
+  pinned at the upstream revision that adds Text/Data builders.
 - Drone cockpit example with attitude indicator, compass, tapes, VSI,
   battery/signal/GPS indicators, sparklines, gimbal indicator, home
   arrow, warnings panel, animated state transitions, HUD info bar,

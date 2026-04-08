@@ -23,38 +23,44 @@
 CapnpPayloadBuilder::CapnpPayloadBuilder(size_t capacity) : buf_(capacity, 0) {}
 
 void CapnpPayloadBuilder::set_float32(size_t offset, float value) {
-    if (offset + sizeof(float) > buf_.size())
+    if (offset + sizeof(float) > buf_.size()) {
         return;
+    }
     std::memcpy(buf_.data() + offset, &value, sizeof(float));
 }
 
 void CapnpPayloadBuilder::set_float64(size_t offset, double value) {
-    if (offset + sizeof(double) > buf_.size())
+    if (offset + sizeof(double) > buf_.size()) {
         return;
+    }
     std::memcpy(buf_.data() + offset, &value, sizeof(double));
 }
 
 void CapnpPayloadBuilder::set_uint8(size_t offset, uint8_t value) {
-    if (offset >= buf_.size())
+    if (offset >= buf_.size()) {
         return;
+    }
     buf_[offset] = value;
 }
 
 void CapnpPayloadBuilder::set_uint16(size_t offset, uint16_t value) {
-    if (offset + sizeof(uint16_t) > buf_.size())
+    if (offset + sizeof(uint16_t) > buf_.size()) {
         return;
+    }
     std::memcpy(buf_.data() + offset, &value, sizeof(uint16_t));
 }
 
 void CapnpPayloadBuilder::set_uint32(size_t offset, uint32_t value) {
-    if (offset + sizeof(uint32_t) > buf_.size())
+    if (offset + sizeof(uint32_t) > buf_.size()) {
         return;
+    }
     std::memcpy(buf_.data() + offset, &value, sizeof(uint32_t));
 }
 
 void CapnpPayloadBuilder::set_uint64(size_t offset, uint64_t value) {
-    if (offset + sizeof(uint64_t) > buf_.size())
+    if (offset + sizeof(uint64_t) > buf_.size()) {
         return;
+    }
     std::memcpy(buf_.data() + offset, &value, sizeof(uint64_t));
 }
 

@@ -24,25 +24,23 @@
 //   - Concurrent add/remove safety
 //   - Notify payload encoding via VsomeipSubscriber::encode_header
 
-#include "../vsomeip_service.h"
-#include "../vsomeip_subscriber.h"
-#include "../vsomeip_types.h"
-
-#include <gtest/gtest.h>
 #include <atomic>
+#include <gtest/gtest.h>
 #include <mutex>
 #include <set>
 #include <thread>
 #include <vector>
+
+#include "../vsomeip_service.h"
+#include "../vsomeip_subscriber.h"
+#include "../vsomeip_types.h"
 
 // ── ServiceRegistry tests ───────────────────────────────────────────────────────
 
 TEST(Service, AddAndFindService) {
     ServiceRegistry reg;
     bool called = false;
-    reg.add(0x1234, 0x0001, [&](uint8_t, const uint8_t*, uint32_t) {
-        called = true;
-    });
+    reg.add(0x1234, 0x0001, [&](uint8_t, const uint8_t*, uint32_t) { called = true; });
 
     EXPECT_EQ(reg.service_count(), 1u);
     auto* svc = reg.find(0x1234, 0x0001);
@@ -170,11 +168,10 @@ TEST(Service, RequestCallbackDispatches) {
     std::vector<uint8_t> received_data;
     uint8_t received_disc = 0;
 
-    reg.add(0x1234, 0x0001,
-            [&](uint8_t disc, const uint8_t* data, uint32_t len) {
-                received_disc = disc;
-                received_data.assign(data, data + len);
-            });
+    reg.add(0x1234, 0x0001, [&](uint8_t disc, const uint8_t* data, uint32_t len) {
+        received_disc = disc;
+        received_data.assign(data, data + len);
+    });
 
     auto* svc = reg.find(0x1234, 0x0001);
     ASSERT_NE(svc, nullptr);
@@ -193,13 +190,13 @@ TEST(Service, RequestCallbackDispatches) {
 TEST(Service, NotifyHeaderEncoding) {
     // Notification has message_type = 0x02 (NOTIFICATION)
     VsomeipMessageHeader hdr{
-        .service_id   = 0x1234,
-        .instance_id  = 0x0001,
-        .method_id    = 0x8001,  // event ID
-        .message_type = 0x02,    // NOTIFICATION
-        .return_code  = 0x00,
-        .request_id   = 0,
-        .payload_len  = 10,
+        .service_id = 0x1234,
+        .instance_id = 0x0001,
+        .method_id = 0x8001,   // event ID
+        .message_type = 0x02,  // NOTIFICATION
+        .return_code = 0x00,
+        .request_id = 0,
+        .payload_len = 10,
     };
 
     auto bytes = VsomeipSubscriber::encode_header(hdr);
@@ -210,13 +207,13 @@ TEST(Service, NotifyHeaderEncoding) {
 TEST(Service, FieldNotifyHeaderEncoding) {
     // A field getter response also uses message type 0x80 (RESPONSE)
     VsomeipMessageHeader hdr{
-        .service_id   = 0x1234,
-        .instance_id  = 0x0001,
-        .method_id    = 0x0010,  // getter method
-        .message_type = 0x80,    // RESPONSE (for field GET)
-        .return_code  = 0x00,
-        .request_id   = 0x00020003,
-        .payload_len  = 4,
+        .service_id = 0x1234,
+        .instance_id = 0x0001,
+        .method_id = 0x0010,   // getter method
+        .message_type = 0x80,  // RESPONSE (for field GET)
+        .return_code = 0x00,
+        .request_id = 0x00020003,
+        .payload_len = 4,
     };
 
     auto bytes = VsomeipSubscriber::encode_header(hdr);
@@ -231,8 +228,7 @@ TEST(Service, ConcurrentAddRemove) {
 
     std::thread adder([&] {
         for (int i = 0; i < N; ++i) {
-            reg.add(static_cast<uint16_t>(i), 0x0001,
-                    [](uint8_t, const uint8_t*, uint32_t) {});
+            reg.add(static_cast<uint16_t>(i), 0x0001, [](uint8_t, const uint8_t*, uint32_t) {});
         }
     });
 
@@ -256,8 +252,7 @@ TEST(Service, ConcurrentEventAddRemove) {
 
     std::thread adder([&] {
         for (int i = 0; i < N; ++i) {
-            reg.add_event(0x1234, 0x0001, static_cast<uint16_t>(i),
-                          {0x01}, false, 0);
+            reg.add_event(0x1234, 0x0001, static_cast<uint16_t>(i), {0x01}, false, 0);
         }
     });
 

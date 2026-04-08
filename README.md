@@ -210,11 +210,10 @@ Two generators are supported, with the hook resolving them in order:
 To skip codegen entirely, set `VSOMEIP_SKIP_CAPNP=1` before running the
 hook. Both generators target `lib/generated/`.
 
-> **Note on Dart-side builders.** `capnpc-dart` currently emits Builder
-> stubs only for scalars and enums; Text/Data write paths are not yet
-> implemented upstream. If you need to *send* a Cap'n Proto message
-> from Dart that contains Text or Data fields (e.g. `Infotainment`), use
-> the Python-generated builder until upstream support lands.
+> **Builder coverage.** As of the current `capnpc-dart` revision pinned in
+> `third_party/capnpc-dart`, the plugin emits full Builder support for
+> scalars, enums, **and Text/Data fields**. The Python fallback is still
+> available for environments without `capnp` on PATH.
 
 ### Zero-Copy Read (Path A)
 

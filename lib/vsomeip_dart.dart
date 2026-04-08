@@ -1,5 +1,5 @@
 /// High-performance Dart bridge to the COVESA vsomeip SOME/IP stack.
-library vsomeip_dart;
+library;
 
 export 'src/exceptions.dart';
 export 'src/ffi/bindings.dart' show VsomeipBindings;
