@@ -4,7 +4,9 @@ analyzer:
   exclude:
     - "**/*.g.dart"
     - "build/**"
+    - "third_party/**"
     - "example/flutter_vehicle_app/**"
+    - "example/flutter_drone_cockpit/**"
 
 linter:
   rules:

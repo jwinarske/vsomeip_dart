@@ -1,0 +1,260 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+
+# Cancel in-flight runs for the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+
+  # ── Lint: clang-format · clang-tidy · dart analyze ──────────────────────────
+  lint:
+    name: Lint (clang-format · clang-tidy · dart analyze)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install C++ lint tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build libgtest-dev \
+            clang clang-tidy clang-format
+
+      # ── clang-format ──────────────────────────────────────────────────────
+      - name: clang-format check
+        run: |
+          find src \( -name '*.cpp' -o -name '*.h' \) \
+            ! -path 'src/cmake-build-debug/*' \
+          | xargs clang-format --dry-run --Werror
+
+      # ── clang-tidy (needs compile_commands.json) ──────────────────────────
+      - name: Configure (generate compile_commands.json)
+        run: |
+          cmake -B src/build-lint -S src \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DBUILD_VSOMEIP_BRIDGE=OFF \
+            -DBUILD_VSOMEIP_TOOLS=OFF \
+            -DBUILD_TESTING=ON
+
+      - name: Build (materialise generated headers)
+        run: cmake --build src/build-lint --parallel
+
+      - name: clang-tidy
+        run: |
+          # Only lint files that are present in compile_commands.json.
+          # Files excluded by CMake options (e.g. BUILD_VSOMEIP_BRIDGE=OFF)
+          # have no compile entry, so clang-tidy would fall back to default
+          # flags with no -I paths and emit spurious "unknown type" errors
+          # for Dart_CObject, vsomeip_v3::application, etc.
+          python3 -c "import json; \
+          db=json.load(open('src/build-lint/compile_commands.json')); \
+          print('\n'.join(e['file'] for e in db \
+            if 'build-lint' not in e['file'] \
+            and 'cmake-build-debug' not in e['file']))" \
+          | xargs clang-tidy \
+              --config-file=src/.clang-tidy \
+              -p src/build-lint
+
+      # ── Dart analysis ─────────────────────────────────────────────────────
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: dart pub get
+        run: dart pub get
+
+      - name: dart analyze
+        run: dart analyze --fatal-infos
+
+  # ── C++ tests – Ubuntu 24.04 ─────────────────────────────────────────────
+  cpp-ubuntu:
+    name: C++ tests (Ubuntu 24.04)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build libgtest-dev \
+            gcc g++ lcov
+
+      # vsomeip3 is not in the standard Ubuntu repos; attempt install and
+      # enable the bridge build only when the package is available.
+      - name: Try to install vsomeip3 (optional)
+        id: vsomeip
+        run: |
+          sudo apt-get install -y --no-install-recommends libvsomeip3-dev \
+            && echo "found=true"  >> "$GITHUB_OUTPUT" \
+            || echo "found=false" >> "$GITHUB_OUTPUT"
+
+      - name: Configure
+        run: |
+          cmake -B src/build -S src \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_TESTING=ON \
+            -DBUILD_VSOMEIP_BRIDGE=${{ steps.vsomeip.outputs.found == 'true' && 'ON' || 'OFF' }} \
+            -DENABLE_COVERAGE=ON
+
+      - name: Build
+        run: cmake --build src/build --parallel
+
+      - name: Run tests
+        run: ctest --test-dir src/build --output-on-failure -j$(nproc)
+
+      - name: Generate LCOV report
+        run: |
+          lcov --capture \
+               --directory src/build \
+               --output-file coverage.info \
+               --exclude '*/test/*' \
+               --exclude '/usr/*' \
+               --ignore-errors unused
+          lcov --list coverage.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.info
+          flags: cpp-ubuntu
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ── C++ tests – Fedora 42 ─────────────────────────────────────────────────
+  cpp-fedora:
+    name: C++ tests (Fedora 42)
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:42
+    steps:
+      # git is required before checkout
+      - name: Install git
+        run: dnf install -y git
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          dnf install -y \
+            cmake ninja-build gtest-devel \
+            gcc-c++ lcov findutils
+
+      # vsomeip is carried in the standard Fedora repos; fall back gracefully
+      # if the package name or version differs.
+      - name: Try to install vsomeip3 (optional)
+        id: vsomeip
+        run: |
+          dnf install -y vsomeip-devel \
+            && echo "found=true"  >> "$GITHUB_OUTPUT" \
+            || echo "found=false" >> "$GITHUB_OUTPUT"
+
+      - name: Configure
+        run: |
+          cmake -B src/build -S src \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_TESTING=ON \
+            -DBUILD_VSOMEIP_BRIDGE=${{ steps.vsomeip.outputs.found == 'true' && 'ON' || 'OFF' }} \
+            -DENABLE_COVERAGE=ON
+
+      - name: Build
+        run: cmake --build src/build --parallel
+
+      - name: Run tests
+        run: ctest --test-dir src/build --output-on-failure -j$(nproc)
+
+      - name: Generate LCOV report
+        run: |
+          lcov --capture \
+               --directory src/build \
+               --output-file coverage.info \
+               --exclude '*/test/*' \
+               --exclude '/usr/*' \
+               --ignore-errors unused
+          lcov --list coverage.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.info
+          flags: cpp-fedora
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ── Dart tests + coverage ────────────────────────────────────────────────
+  dart-test:
+    name: Dart tests + coverage
+    runs-on: ubuntu-24.04
+    # The native build hook honours VSOMEIP_SKIP_BUILD=1, allowing unit tests
+    # that use mock FFI bindings to run without vsomeip3 being installed.
+    env:
+      VSOMEIP_SKIP_BUILD: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: dart pub get
+        run: dart pub get
+
+      - name: dart test with coverage
+        run: dart test --coverage=coverage
+
+      - name: Format coverage as LCOV
+        run: |
+          dart run coverage:format_coverage \
+            --lcov \
+            --in=coverage \
+            --out=coverage/lcov.info \
+            --packages=.dart_tool/package_config.json \
+            --report-on=lib
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/lcov.info
+          flags: dart
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ── dart pub publish --dry-run ───────────────────────────────────────────
+  dart-pub-dry-run:
+    name: dart pub publish (dry-run)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: dart pub get
+        run: dart pub get
+
+      - name: dart pub publish --dry-run
+        run: dart pub publish --dry-run
+

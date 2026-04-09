@@ -21,8 +21,7 @@
 
 #include "vsomeip_subscriber.h"
 
-VsomeipSubscriber::VsomeipSubscriber(MessagePostFn post_fn)
-    : post_fn_(std::move(post_fn)) {}
+VsomeipSubscriber::VsomeipSubscriber(MessagePostFn post_fn) : post_fn_(std::move(post_fn)) {}
 
 void VsomeipSubscriber::on_message(uint16_t service_id,
                                    uint16_t instance_id,
@@ -35,13 +34,13 @@ void VsomeipSubscriber::on_message(uint16_t service_id,
                                    uint32_t payload_len) {
     // ── Pack header ─────────────────────────────────────────────────────────
     VsomeipMessageHeader hdr{
-        .service_id   = service_id,
-        .instance_id  = instance_id,
-        .method_id    = method_id,
+        .service_id = service_id,
+        .instance_id = instance_id,
+        .method_id = method_id,
         .message_type = message_type,
-        .return_code  = return_code,
-        .request_id   = (static_cast<uint64_t>(client_id) << 16) | session_id,
-        .payload_len  = payload_len,
+        .return_code = return_code,
+        .request_id = (static_cast<uint64_t>(client_id) << 16) | session_id,
+        .payload_len = payload_len,
     };
 
     // ── Encode header with discriminator ────────────────────────────────────
@@ -54,8 +53,7 @@ void VsomeipSubscriber::on_message(uint16_t service_id,
              payload_len);
 }
 
-std::vector<uint8_t> VsomeipSubscriber::encode_header(
-    const VsomeipMessageHeader& hdr) {
+std::vector<uint8_t> VsomeipSubscriber::encode_header(const VsomeipMessageHeader& hdr) {
     // Wire format:
     //   [0]       discriminator = 0x01 (VsomeipMessage)
     //   [1..2]    service_id (LE)

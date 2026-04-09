@@ -16,8 +16,7 @@
 
 #include "vsomeip_service.h"
 
-void ServiceRegistry::add(uint16_t service_id, uint16_t instance_id,
-                          ServiceRequestFn request_fn) {
+void ServiceRegistry::add(uint16_t service_id, uint16_t instance_id, ServiceRequestFn request_fn) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto key = make_key(service_id, instance_id);
     services_[key] = OfferedService{
@@ -33,14 +32,18 @@ void ServiceRegistry::remove(uint16_t service_id, uint16_t instance_id) {
     services_.erase(make_key(service_id, instance_id));
 }
 
-void ServiceRegistry::add_event(uint16_t service_id, uint16_t instance_id,
+void ServiceRegistry::add_event(uint16_t service_id,
+                                uint16_t instance_id,
                                 uint16_t event_id,
                                 const std::set<uint16_t>& eventgroup_ids,
-                                bool is_field, uint32_t cycle_ms) {
+                                bool is_field,
+                                uint32_t cycle_ms) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto key = make_key(service_id, instance_id);
     auto it = services_.find(key);
-    if (it == services_.end()) return;
+    if (it == services_.end()) {
+        return;
+    }
 
     it->second.events[event_id] = OfferedEvent{
         .event_id = event_id,
@@ -50,17 +53,17 @@ void ServiceRegistry::add_event(uint16_t service_id, uint16_t instance_id,
     };
 }
 
-void ServiceRegistry::remove_event(uint16_t service_id, uint16_t instance_id,
-                                   uint16_t event_id) {
+void ServiceRegistry::remove_event(uint16_t service_id, uint16_t instance_id, uint16_t event_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto key = make_key(service_id, instance_id);
     auto it = services_.find(key);
-    if (it == services_.end()) return;
+    if (it == services_.end()) {
+        return;
+    }
     it->second.events.erase(event_id);
 }
 
-const OfferedService* ServiceRegistry::find(uint16_t service_id,
-                                            uint16_t instance_id) const {
+const OfferedService* ServiceRegistry::find(uint16_t service_id, uint16_t instance_id) const {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = services_.find(make_key(service_id, instance_id));
     return it != services_.end() ? &it->second : nullptr;
@@ -72,7 +75,9 @@ const OfferedEvent* ServiceRegistry::find_event(uint16_t service_id,
     std::lock_guard<std::mutex> lock(mutex_);
     auto key = make_key(service_id, instance_id);
     auto sit = services_.find(key);
-    if (sit == services_.end()) return nullptr;
+    if (sit == services_.end()) {
+        return nullptr;
+    }
     auto eit = sit->second.events.find(event_id);
     return eit != sit->second.events.end() ? &eit->second : nullptr;
 }
@@ -82,8 +87,7 @@ size_t ServiceRegistry::service_count() const {
     return services_.size();
 }
 
-size_t ServiceRegistry::event_count(uint16_t service_id,
-                                    uint16_t instance_id) const {
+size_t ServiceRegistry::event_count(uint16_t service_id, uint16_t instance_id) const {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = services_.find(make_key(service_id, instance_id));
     return it != services_.end() ? it->second.events.size() : 0;

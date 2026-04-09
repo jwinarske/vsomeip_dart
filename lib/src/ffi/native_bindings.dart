@@ -2,6 +2,7 @@ import 'dart:ffi';
 import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 import 'bindings.dart';
+
 /// Native FFI implementation of [VsomeipBindings].
 ///
 /// Loads `libvsomeip_bridge.so` and calls the C ABI functions.
@@ -10,14 +11,21 @@ import 'bindings.dart';
 class NativeVsomeipBindings implements VsomeipBindings {
   final DynamicLibrary _lib;
   NativeVsomeipBindings._(this._lib) {
-    // Initialize the bridge with Dart API DL
+    // The bridge needs Dart's runtime API table to post messages back to
+    // the Dart isolate via Dart_PostCObject_DL. Passing nullptr here
+    // causes Dart_InitializeApiDL to dereference null and segfault inside
+    // the bridge's vsomeip_bridge_init.
     final init = _lib
         .lookupFunction<
-          Void Function(Pointer<Void>),
-          void Function(Pointer<Void>)
+          Int32 Function(Pointer<Void>),
+          int Function(Pointer<Void>)
         >('vsomeip_bridge_init');
-    init(nullptr); // Pass NativeApi.initializeApiDLData in production
+    final rc = init(NativeApi.initializeApiDLData);
+    if (rc != 0) {
+      throw StateError('vsomeip_bridge_init failed with code $rc');
+    }
   }
+
   /// Load from a specific path.
   factory NativeVsomeipBindings.open(String path) {
     return NativeVsomeipBindings._(DynamicLibrary.open(path));
@@ -37,6 +45,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
     if (handle == nullptr) return null;
     return handle.address; // Use address as handle
   }
+
   @override
   void appDestroy(Object handle) {
     final fn = _lib
@@ -46,6 +55,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
         >('vsomeip_app_destroy');
     fn(Pointer.fromAddress(handle as int));
   }
+
   Pointer<Void> _h(Object handle) => Pointer.fromAddress(handle as int);
   @override
   void requestService(Object handle, int serviceId, int instanceId) {
@@ -56,6 +66,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
         >('vsomeip_request_service');
     fn(_h(handle), serviceId, instanceId);
   }
+
   @override
   void releaseService(Object handle, int serviceId, int instanceId) {
     final fn = _lib
@@ -65,6 +76,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
         >('vsomeip_release_service');
     fn(_h(handle), serviceId, instanceId);
   }
+
   @override
   void subscribe(
     Object handle,
@@ -81,6 +93,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
         >('vsomeip_subscribe');
     fn(_h(handle), serviceId, instanceId, eventgroupId, eventId, eventsPort);
   }
+
   @override
   void unsubscribe(
     Object handle,
@@ -95,6 +108,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
         >('vsomeip_unsubscribe');
     fn(_h(handle), serviceId, instanceId, eventgroupId);
   }
+
   @override
   void registerMessageHandler(
     Object handle,
@@ -110,6 +124,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
         >('vsomeip_register_message_handler');
     fn(_h(handle), serviceId, instanceId, methodId, eventsPort);
   }
+
   @override
   void unregisterMessageHandler(
     Object handle,
@@ -124,6 +139,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
         >('vsomeip_unregister_message_handler');
     fn(_h(handle), serviceId, instanceId, methodId);
   }
+
   @override
   void sendRequest(
     Object handle,
@@ -173,6 +189,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
     );
     malloc.free(buf);
   }
+
   @override
   void sendFireForget(
     Object handle,
@@ -191,14 +208,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
             Pointer<Uint8>,
             Uint32,
           ),
-          void Function(
-            Pointer<Void>,
-            int,
-            int,
-            int,
-            Pointer<Uint8>,
-            int,
-          )
+          void Function(Pointer<Void>, int, int, int, Pointer<Uint8>, int)
         >('vsomeip_send_fire_forget');
     final buf = malloc<Uint8>(payload.isEmpty ? 1 : payload.length);
     for (var i = 0; i < payload.length; i++) {
@@ -207,6 +217,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
     fn(_h(handle), serviceId, instanceId, methodId, buf, payload.length);
     malloc.free(buf);
   }
+
   @override
   void sendResponse(Object handle, int requestId, Uint8List payload) {
     final fn = _lib
@@ -221,6 +232,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
     fn(_h(handle), requestId, buf, payload.length);
     malloc.free(buf);
   }
+
   @override
   void offerService(
     Object handle,
@@ -235,6 +247,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
         >('vsomeip_offer_service');
     fn(_h(handle), serviceId, instanceId, requestsPort);
   }
+
   @override
   void stopOfferService(Object handle, int serviceId, int instanceId) {
     final fn = _lib
@@ -244,6 +257,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
         >('vsomeip_stop_offer_service');
     fn(_h(handle), serviceId, instanceId);
   }
+
   @override
   void offerEvent(
     Object handle,
@@ -286,6 +300,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
     fn(_h(handle), serviceId, instanceId, eventId, buf, n, isField, cycleMs);
     malloc.free(buf);
   }
+
   @override
   void stopOfferEvent(
     Object handle,
@@ -300,6 +315,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
         >('vsomeip_stop_offer_event');
     fn(_h(handle), serviceId, instanceId, eventId);
   }
+
   @override
   void notify(
     Object handle,
@@ -320,15 +336,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
             Uint32,
             Bool,
           ),
-          void Function(
-            Pointer<Void>,
-            int,
-            int,
-            int,
-            Pointer<Uint8>,
-            int,
-            bool,
-          )
+          void Function(Pointer<Void>, int, int, int, Pointer<Uint8>, int, bool)
         >('vsomeip_notify');
     final buf = malloc<Uint8>(payload.isEmpty ? 1 : payload.length);
     for (var i = 0; i < payload.length; i++) {
@@ -337,6 +345,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
     fn(_h(handle), serviceId, instanceId, eventId, buf, payload.length, force);
     malloc.free(buf);
   }
+
   @override
   void capnpSubscribe(
     Object handle,
@@ -350,7 +359,14 @@ class NativeVsomeipBindings implements VsomeipBindings {
     final fn = _lib
         .lookupFunction<
           Void Function(
-              Pointer<Void>, Uint16, Uint16, Uint16, Uint16, Uint32, Int64),
+            Pointer<Void>,
+            Uint16,
+            Uint16,
+            Uint16,
+            Uint16,
+            Uint32,
+            Int64,
+          ),
           void Function(Pointer<Void>, int, int, int, int, int, int)
         >('vsomeip_capnp_subscribe');
     fn(
@@ -363,6 +379,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
       eventsPort,
     );
   }
+
   @override
   void capnpSubscribeDecoded(
     Object handle,
@@ -376,7 +393,14 @@ class NativeVsomeipBindings implements VsomeipBindings {
     final fn = _lib
         .lookupFunction<
           Void Function(
-              Pointer<Void>, Uint16, Uint16, Uint16, Uint16, Uint32, Int64),
+            Pointer<Void>,
+            Uint16,
+            Uint16,
+            Uint16,
+            Uint16,
+            Uint32,
+            Int64,
+          ),
           void Function(Pointer<Void>, int, int, int, int, int, int)
         >('vsomeip_capnp_subscribe_decoded');
     fn(
@@ -389,6 +413,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
       eventsPort,
     );
   }
+
   @override
   void capnpNotify(
     Object handle,
@@ -438,6 +463,7 @@ class NativeVsomeipBindings implements VsomeipBindings {
     );
     malloc.free(buf);
   }
+
   @override
   void capnpRegisterSchema(Object handle, int schemaId, String schemaName) {
     final fn = _lib

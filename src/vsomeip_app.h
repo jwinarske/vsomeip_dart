@@ -23,14 +23,14 @@
 
 #pragma once
 
-#include "vsomeip_types.h"
-
 #include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
 #include <thread>
+
+#include "vsomeip_types.h"
 
 // Forward declare vsomeip types to avoid requiring vsomeip headers in tests.
 namespace vsomeip_v3 {
@@ -46,14 +46,11 @@ using PostFn = std::function<void(uint8_t disc, const uint8_t* data, uint32_t le
 class VsomeipApp {
 public:
     // Production constructor: creates a real vsomeip application.
-    VsomeipApp(const std::string& app_name,
-               const char* config_path,
-               PostFn post_fn);
+    VsomeipApp(const std::string& app_name, const char* config_path, PostFn post_fn);
 
     // Test constructor: accepts an externally-provided application mock.
     // The caller owns the application lifetime.
-    VsomeipApp(std::shared_ptr<vsomeip::application> app,
-               PostFn post_fn);
+    VsomeipApp(std::shared_ptr<vsomeip::application> app, PostFn post_fn);
 
     ~VsomeipApp();
 

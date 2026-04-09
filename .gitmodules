@@ -2,3 +2,6 @@
 	path = third_party/vsomeip
 	url = https://github.com/COVESA/vsomeip.git
 	branch = master
+[submodule "third_party/capnpc-dart"]
+	path = third_party/capnpc-dart
+	url = https://github.com/jwinarske/capnpc-dart.git

@@ -22,8 +22,6 @@
 // Usage:
 //   VSOMEIP_CONFIGURATION=example/simulator/vsomeip_local.json ./vehicle_sim
 
-#include <vsomeip/vsomeip.hpp>
-
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -35,16 +33,28 @@
 #include <random>
 #include <set>
 #include <thread>
+#include <vsomeip/vsomeip.hpp>
 
 // SOME/IP identifiers — must match vsomeip_local.json and dashboard
-static constexpr vsomeip::service_t   SERVICE_ID   = 0x1234;
-static constexpr vsomeip::instance_t  INSTANCE_ID  = 0x0001;
-static constexpr vsomeip::eventgroup_t EVENTGROUP   = 0x0001;
-static constexpr vsomeip::event_t     SPEED_EVENT  = 0x8001;
+static constexpr vsomeip::service_t SERVICE_ID = 0x1234;
+static constexpr vsomeip::instance_t INSTANCE_ID = 0x0001;
+static constexpr vsomeip::eventgroup_t EVENTGROUP = 0x0001;
+static constexpr vsomeip::event_t SPEED_EVENT = 0x8001;
+static constexpr vsomeip::event_t RPM_EVENT = 0x8002;
+static constexpr vsomeip::event_t TEMP_EVENT = 0x8003;
+static constexpr vsomeip::event_t PHASE_EVENT = 0x8004;
+
+// Phase byte values published by the simulator
+static constexpr uint8_t PHASE_IDLE = 0;
+static constexpr uint8_t PHASE_ACCELERATE = 1;
+static constexpr uint8_t PHASE_CRUISE = 2;
+static constexpr uint8_t PHASE_BRAKE = 3;
 
 static std::atomic<bool> g_running{true};
 
-static void signal_handler(int) { g_running = false; }
+static void signal_handler(int) {
+    g_running = false;
+}
 
 // ── Driving profile simulator ───────────────────────────────────────────────
 
@@ -54,7 +64,7 @@ struct DrivingSim {
     double speed_kmh = 0;
     double rpm = 800;
     double coolant_temp = 70;
-    Phase  phase = Phase::idle;
+    Phase phase = Phase::idle;
     double phase_timer = 0;
     double target_speed = 0;
     std::mt19937 rng{42};
@@ -65,11 +75,16 @@ struct DrivingSim {
     }
 
     double gear(double spd) {
-        if (spd < 15) return 1;
-        if (spd < 30) return 2;
-        if (spd < 50) return 3;
-        if (spd < 80) return 4;
-        if (spd < 120) return 5;
+        if (spd < 15)
+            return 1;
+        if (spd < 30)
+            return 2;
+        if (spd < 50)
+            return 3;
+        if (spd < 80)
+            return 4;
+        if (spd < 120)
+            return 5;
         return 6;
     }
 
@@ -98,12 +113,12 @@ struct DrivingSim {
 
     void tick(double dt) {
         phase_timer -= dt;
-        if (phase_timer <= 0) next_phase();
+        if (phase_timer <= 0)
+            next_phase();
 
         switch (phase) {
             case Phase::accelerate:
-                speed_kmh += std::clamp((target_speed - speed_kmh) * 0.5 * dt,
-                                        0.0, 40.0 * dt);
+                speed_kmh += std::clamp((target_speed - speed_kmh) * 0.5 * dt, 0.0, 40.0 * dt);
                 speed_kmh += noise(0.3);
                 break;
             case Phase::cruise:
@@ -124,8 +139,7 @@ struct DrivingSim {
             rpm = 800 + noise(20);
         } else {
             auto g = gear(speed_kmh);
-            rpm = std::clamp(speed_kmh * 60 / (g * 3.6), 800.0, 7000.0)
-                  + noise(30);
+            rpm = std::clamp(speed_kmh * 60 / (g * 3.6), 800.0, 7000.0) + noise(30);
         }
 
         double target_temp = 85 + (rpm / 7000.0) * 15 + noise(0.5);
@@ -135,10 +149,14 @@ struct DrivingSim {
 
     const char* phase_name() const {
         switch (phase) {
-            case Phase::idle:       return "idle";
-            case Phase::accelerate: return "accel";
-            case Phase::cruise:     return "cruise";
-            case Phase::brake:      return "brake";
+            case Phase::idle:
+                return "idle";
+            case Phase::accelerate:
+                return "accel";
+            case Phase::cruise:
+                return "cruise";
+            case Phase::brake:
+                return "brake";
         }
         return "?";
     }
@@ -146,18 +164,28 @@ struct DrivingSim {
 
 // ── Build VehicleSpeed payload (matches VehicleSpeedBuilder layout) ──────────
 
-static std::shared_ptr<vsomeip::payload> build_speed_payload(
-    std::shared_ptr<vsomeip::runtime>& rt,
-    float speed_kmh, uint64_t timestamp, uint16_t sensor_id,
-    uint8_t quality_flag = 0) {
-
+static std::shared_ptr<vsomeip::payload> build_speed_payload(std::shared_ptr<vsomeip::runtime>& rt,
+                                                             float speed_kmh,
+                                                             uint64_t timestamp,
+                                                             uint16_t sensor_id,
+                                                             uint8_t quality_flag = 0) {
     // Layout: [float32 LE][uint64 LE][uint16 LE][uint8][uint8] = 16 bytes
     uint8_t buf[16] = {};
-    std::memcpy(buf + 0,  &speed_kmh,  sizeof(float));
-    std::memcpy(buf + 4,  &timestamp,  sizeof(uint64_t));
-    std::memcpy(buf + 12, &sensor_id,  sizeof(uint16_t));
+    std::memcpy(buf + 0, &speed_kmh, sizeof(float));
+    std::memcpy(buf + 4, &timestamp, sizeof(uint64_t));
+    std::memcpy(buf + 12, &sensor_id, sizeof(uint16_t));
     buf[14] = quality_flag;
 
+    auto pl = rt->create_payload();
+    pl->set_data(buf, sizeof(buf));
+    return pl;
+}
+
+// Build a simple float32 payload (4 bytes LE) for RPM and temperature.
+static std::shared_ptr<vsomeip::payload> build_float_payload(std::shared_ptr<vsomeip::runtime>& rt,
+                                                             float value) {
+    uint8_t buf[4];
+    std::memcpy(buf, &value, sizeof(float));
     auto pl = rt->create_payload();
     pl->set_data(buf, sizeof(buf));
     return pl;
@@ -169,7 +197,7 @@ int main() {
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
 
-    auto rt  = vsomeip::runtime::get();
+    auto rt = vsomeip::runtime::get();
     auto app = rt->create_application("vehicle_sim");
 
     if (!app->init()) {
@@ -179,10 +207,10 @@ int main() {
 
     std::cout << "Vehicle Signal Simulator (vsomeip)\n"
               << "===================================\n"
-              << "Service: 0x" << std::hex << SERVICE_ID
-              << " Instance: 0x" << INSTANCE_ID << std::dec << "\n"
-              << "Speed event: 0x" << std::hex << SPEED_EVENT
-              << " @ 100 Hz\n" << std::dec;
+              << "Service: 0x" << std::hex << SERVICE_ID << " Instance: 0x" << INSTANCE_ID
+              << std::dec << "\n"
+              << "Speed event: 0x" << std::hex << SPEED_EVENT << " @ 100 Hz\n"
+              << std::dec;
 
     app->register_state_handler([&](vsomeip::state_type_e state) {
         if (state == vsomeip::state_type_e::ST_REGISTERED) {
@@ -190,10 +218,16 @@ int main() {
             app->offer_service(SERVICE_ID, INSTANCE_ID);
 
             std::set<vsomeip::eventgroup_t> groups{EVENTGROUP};
-            app->offer_event(SERVICE_ID, INSTANCE_ID, SPEED_EVENT, groups,
-                             vsomeip::event_type_e::ET_EVENT);
+            app->offer_event(
+                SERVICE_ID, INSTANCE_ID, SPEED_EVENT, groups, vsomeip::event_type_e::ET_EVENT);
+            app->offer_event(
+                SERVICE_ID, INSTANCE_ID, RPM_EVENT, groups, vsomeip::event_type_e::ET_EVENT);
+            app->offer_event(
+                SERVICE_ID, INSTANCE_ID, TEMP_EVENT, groups, vsomeip::event_type_e::ET_EVENT);
+            app->offer_event(
+                SERVICE_ID, INSTANCE_ID, PHASE_EVENT, groups, vsomeip::event_type_e::ET_EVENT);
 
-            std::cout << "[sim] Service offered, event offered\n";
+            std::cout << "[sim] Service offered with 4 events\n";
         }
     });
 
@@ -205,26 +239,62 @@ int main() {
 
     DrivingSim sim;
     int tick = 0;
+    Phase last_phase = Phase::idle;
+    bool first_phase_publish = true;
 
     std::cout << "[sim] Publishing at 100 Hz. Ctrl-C to stop.\n";
+
+    auto phase_to_byte = [](Phase p) -> uint8_t {
+        switch (p) {
+            case Phase::idle:
+                return PHASE_IDLE;
+            case Phase::accelerate:
+                return PHASE_ACCELERATE;
+            case Phase::cruise:
+                return PHASE_CRUISE;
+            case Phase::brake:
+                return PHASE_BRAKE;
+        }
+        return PHASE_IDLE;
+    };
 
     while (g_running) {
         sim.tick(0.01);  // 10 ms step
 
-        auto now = std::chrono::system_clock::now();
-        auto us  = std::chrono::duration_cast<std::chrono::microseconds>(
-                       now.time_since_epoch()).count();
+        // Publish phase only when it changes (or once at startup)
+        if (first_phase_publish || sim.phase != last_phase) {
+            uint8_t byte = phase_to_byte(sim.phase);
+            auto phase_pl = rt->create_payload();
+            phase_pl->set_data(&byte, 1);
+            app->notify(SERVICE_ID, INSTANCE_ID, PHASE_EVENT, phase_pl);
+            last_phase = sim.phase;
+            first_phase_publish = false;
+        }
 
-        float speed_f = static_cast<float>(sim.speed_kmh);
-        auto pl = build_speed_payload(rt, speed_f,
-                                      static_cast<uint64_t>(us),
-                                      0x0001);
-        app->notify(SERVICE_ID, INSTANCE_ID, SPEED_EVENT, pl);
+        auto now = std::chrono::system_clock::now();
+        auto us =
+            std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+
+        // Speed (every tick — 100 Hz)
+        auto speed_pl = build_speed_payload(
+            rt, static_cast<float>(sim.speed_kmh), static_cast<uint64_t>(us), 0x0001);
+        app->notify(SERVICE_ID, INSTANCE_ID, SPEED_EVENT, speed_pl);
+
+        // RPM (every other tick — 50 Hz)
+        if (tick % 2 == 0) {
+            auto rpm_pl = build_float_payload(rt, static_cast<float>(sim.rpm));
+            app->notify(SERVICE_ID, INSTANCE_ID, RPM_EVENT, rpm_pl);
+        }
+
+        // Coolant temp (every 100th tick — 1 Hz)
+        if (tick % 100 == 0) {
+            auto temp_pl = build_float_payload(rt, static_cast<float>(sim.coolant_temp));
+            app->notify(SERVICE_ID, INSTANCE_ID, TEMP_EVENT, temp_pl);
+        }
 
         // Print once per second
         if (++tick % 100 == 0) {
-            std::cout << "[sim] speed=" << std::fixed
-                      << std::setprecision(1) << sim.speed_kmh
+            std::cout << "[sim] speed=" << std::fixed << std::setprecision(1) << sim.speed_kmh
                       << " km/h  rpm=" << std::setprecision(0) << sim.rpm
                       << "  temp=" << std::setprecision(1) << sim.coolant_temp
                       << " C  phase=" << sim.phase_name() << "\n";
@@ -237,7 +307,8 @@ int main() {
     app->stop_offer_event(SERVICE_ID, INSTANCE_ID, SPEED_EVENT);
     app->stop_offer_service(SERVICE_ID, INSTANCE_ID);
     app->stop();
-    if (vsomeip_thread.joinable()) vsomeip_thread.join();
+    if (vsomeip_thread.joinable())
+        vsomeip_thread.join();
     std::cout << "[sim] Done.\n";
     return 0;
 }

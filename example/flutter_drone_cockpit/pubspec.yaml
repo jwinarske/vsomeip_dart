@@ -1,0 +1,24 @@
+name: flutter_drone_cockpit
+description: >-
+  Drone cockpit example for vsomeip_dart. Displays attitude indicator,
+  compass, altitude/speed tapes, battery, signal strength, and GPS status.
+  Receives telemetry from a vsomeip drone simulator.
+
+publish_to: none
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  vsomeip_dart:
+    path: ../..
+  ffi: ^2.1.0
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+
+flutter:
+  # Required to bundle Material Icons font (battery, signal, satellite, etc.)
+  uses-material-design: true

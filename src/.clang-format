@@ -1,0 +1,93 @@
+# .clang-format – C++17 style for vsomeip_dart native bridge
+# Based on Google style; 4-space indent; 100-column limit.
+---
+Language:        Cpp
+BasedOnStyle:    Google
+
+# ── Indentation ──────────────────────────────────────────────────────────────
+IndentWidth:                        4
+TabWidth:                           4
+UseTab:                             Never
+AccessModifierOffset:               -4
+IndentCaseLabels:                   true
+IndentPPDirectives:                 None
+NamespaceIndentation:               None
+ConstructorInitializerIndentWidth:  4
+ContinuationIndentWidth:            4
+
+# ── Column limit ─────────────────────────────────────────────────────────────
+ColumnLimit:     100
+Standard:        c++17
+
+# ── Braces / line breaks ─────────────────────────────────────────────────────
+BreakBeforeBraces:                  Attach
+BreakBeforeBinaryOperators:         None
+BreakConstructorInitializers:       BeforeColon
+BreakInheritanceList:               BeforeColon
+AlwaysBreakTemplateDeclarations:    Yes
+AlwaysBreakBeforeMultilineStrings:  false
+
+# ── Short constructs ─────────────────────────────────────────────────────────
+AllowShortBlocksOnASingleLine:      Empty
+AllowShortCaseLabelsOnASingleLine:  false
+AllowShortFunctionsOnASingleLine:   Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine:       false
+
+# ── Alignment ────────────────────────────────────────────────────────────────
+AlignAfterOpenBracket:              Align
+AlignConsecutiveAssignments:        false
+AlignConsecutiveDeclarations:       false
+AlignOperands:                      true
+AlignTrailingComments:              true
+DerivePointerAlignment:             false
+PointerAlignment:                   Left
+
+# ── Argument / parameter packing ─────────────────────────────────────────────
+BinPackArguments:                   false
+BinPackParameters:                  false
+AllowAllArgumentsOnNextLine:        true
+AllowAllParametersOfDeclarationOnNextLine: true
+
+# ── Includes ─────────────────────────────────────────────────────────────────
+IncludeBlocks:   Regroup
+SortIncludes:    CaseSensitive
+IncludeCategories:
+  # C system headers  <stdio.h>
+  - Regex:    '^<[a-z_]+\.h>'
+    Priority: 1
+  # C++ standard library  <vector>
+  - Regex:    '^<[a-z]'
+    Priority: 2
+  # Third-party  <boost/...>  <vsomeip/...>
+  - Regex:    '^<'
+    Priority: 3
+  # Project headers
+  - Regex:    '.*'
+    Priority: 4
+
+# ── Spaces ───────────────────────────────────────────────────────────────────
+SpaceAfterCStyleCast:               false
+SpaceAfterLogicalNot:               false
+SpaceAfterTemplateKeyword:          true
+SpaceBeforeAssignmentOperators:     true
+SpaceBeforeCpp11BracedList:         false
+SpaceBeforeCtorInitializerColon:    true
+SpaceBeforeInheritanceColon:        true
+SpaceBeforeParens:                  ControlStatements
+SpaceBeforeRangeBasedForLoopColon:  true
+SpaceInEmptyParentheses:            false
+SpacesBeforeTrailingComments:       2
+SpacesInAngles:                     false
+SpacesInContainerLiterals:          false
+SpacesInCStyleCastParentheses:      false
+SpacesInParentheses:                false
+SpacesInSquareBrackets:             false
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+CompactNamespaces:                  false
+KeepEmptyLinesAtTheStartOfBlocks:   false
+MaxEmptyLinesToKeep:                1
+ReflowComments:                     true
+SortUsingDeclarations:              true
+

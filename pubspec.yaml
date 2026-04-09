@@ -1,10 +1,9 @@
 name: vsomeip_dart
 description: >-
-  High-performance Dart / Flutter bridge to the COVESA vsomeip SOME/IP stack.
-  Delivers messages from automotive SOME/IP services to Dart Streams with
-  zero-copy payloads and a worker-isolate design that never blocks the
-  Flutter render thread.
-version: 0.1.0
+  Dart/Flutter FFI bridge to the COVESA vsomeip SOME/IP stack. Delivers
+  automotive SOME/IP messages to Dart Streams via a zero-copy, worker-isolate
+  design that never blocks the render thread.
+version: 0.2.0
 
 homepage:      https://github.com/meta-flutter/workspace-automation
 repository:    https://github.com/meta-flutter/workspace-automation
@@ -27,12 +26,12 @@ platforms:
   linux:
 
 dependencies:
-  hooks:       any
-  code_assets: any
+  hooks:       ^1.0.2
+  code_assets: ^1.0.0
   ffi:         ^2.1.0
   path:        ^1.9.0
 
 dev_dependencies:
-  lints:    ^4.0.0
+  lints:    ^6.0.0
   test:     ^1.24.0
   coverage: ^1.7.0

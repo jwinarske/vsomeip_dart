@@ -16,11 +16,11 @@
 
 // test_capnp_bridge.cpp — Tests for Cap'n Proto alignment guard.
 
-#include "../capnp_bridge.h"
-
-#include <gtest/gtest.h>
 #include <cstdint>
 #include <cstring>
+#include <gtest/gtest.h>
+
+#include "../capnp_bridge.h"
 
 TEST(CapnpBridge, AlignedPointerDetected) {
     alignas(8) uint8_t buf[64] = {};

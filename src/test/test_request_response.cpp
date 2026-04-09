@@ -24,20 +24,20 @@
 //   - Concurrent request tracking with independent resolution
 //   - Fire-and-forget header encoding (REQUEST_NO_RETURN message type)
 
-#include "../vsomeip_subscriber.h"
-#include "../vsomeip_types.h"
-
-#include <gtest/gtest.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstring>
 #include <functional>
+#include <gtest/gtest.h>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
 #include <vector>
+
+#include "../vsomeip_subscriber.h"
+#include "../vsomeip_types.h"
 
 // ── PendingRequest tracker — extracted logic from vsomeip_bridge.cpp ────────────
 //
@@ -45,26 +45,26 @@
 
 class PendingRequest {
 public:
-    using ResponseCallback = std::function<void(
-        uint8_t disc, const uint8_t* data, uint32_t len)>;
+    using ResponseCallback = std::function<void(uint8_t disc, const uint8_t* data, uint32_t len)>;
 
     // Register a pending request. Returns a unique session ID.
     uint16_t add(ResponseCallback cb) {
         std::lock_guard<std::mutex> lock(mutex_);
         uint16_t session = next_session_++;
-        if (next_session_ == 0) next_session_ = 1;  // skip 0
+        if (next_session_ == 0)
+            next_session_ = 1;  // skip 0
         pending_[session] = std::move(cb);
         return session;
     }
 
     // Resolve a pending request with a response. Returns true if found.
-    bool resolve(uint16_t session_id, uint8_t disc,
-                 const uint8_t* data, uint32_t len) {
+    bool resolve(uint16_t session_id, uint8_t disc, const uint8_t* data, uint32_t len) {
         ResponseCallback cb;
         {
             std::lock_guard<std::mutex> lock(mutex_);
             auto it = pending_.find(session_id);
-            if (it == pending_.end()) return false;
+            if (it == pending_.end())
+                return false;
             cb = std::move(it->second);
             pending_.erase(it);
         }
@@ -74,7 +74,8 @@ public:
 
     // Resolve with an error (timeout, NAK).
     bool reject(uint16_t session_id, const std::string& error_msg) {
-        return resolve(session_id, vsomeip_disc::kError,
+        return resolve(session_id,
+                       vsomeip_disc::kError,
                        reinterpret_cast<const uint8_t*>(error_msg.data()),
                        static_cast<uint32_t>(error_msg.size()));
     }
@@ -110,11 +111,9 @@ public:
         return responses_;
     }
 
-    bool wait_for(size_t n,
-                  std::chrono::milliseconds timeout = std::chrono::milliseconds(1000)) {
+    bool wait_for(size_t n, std::chrono::milliseconds timeout = std::chrono::milliseconds(1000)) {
         std::unique_lock<std::mutex> lock(mutex_);
-        return cv_.wait_for(lock, timeout,
-                            [&] { return responses_.size() >= n; });
+        return cv_.wait_for(lock, timeout, [&] { return responses_.size() >= n; });
     }
 
 private:
@@ -137,9 +136,8 @@ TEST(RequestResponse, ResolveRemovesPending) {
     PendingRequest tracker;
     ResponseCapture cap;
 
-    auto session = tracker.add([&](uint8_t d, const uint8_t* data, uint32_t len) {
-        cap.on_response(d, data, len);
-    });
+    auto session = tracker.add(
+        [&](uint8_t d, const uint8_t* data, uint32_t len) { cap.on_response(d, data, len); });
 
     EXPECT_EQ(tracker.count(), 1u);
 
@@ -163,9 +161,8 @@ TEST(RequestResponse, RejectPostsError) {
     PendingRequest tracker;
     ResponseCapture cap;
 
-    auto session = tracker.add([&](uint8_t d, const uint8_t* data, uint32_t len) {
-        cap.on_response(d, data, len);
-    });
+    auto session = tracker.add(
+        [&](uint8_t d, const uint8_t* data, uint32_t len) { cap.on_response(d, data, len); });
 
     EXPECT_TRUE(tracker.reject(session, "request timed out"));
     EXPECT_EQ(tracker.count(), 0u);
@@ -189,12 +186,10 @@ TEST(RequestResponse, MultipleConcurrentResolveIndependently) {
     PendingRequest tracker;
     ResponseCapture cap1, cap2;
 
-    auto s1 = tracker.add([&](uint8_t d, const uint8_t* data, uint32_t len) {
-        cap1.on_response(d, data, len);
-    });
-    auto s2 = tracker.add([&](uint8_t d, const uint8_t* data, uint32_t len) {
-        cap2.on_response(d, data, len);
-    });
+    auto s1 = tracker.add(
+        [&](uint8_t d, const uint8_t* data, uint32_t len) { cap1.on_response(d, data, len); });
+    auto s2 = tracker.add(
+        [&](uint8_t d, const uint8_t* data, uint32_t len) { cap2.on_response(d, data, len); });
 
     // Resolve out of order
     uint8_t p2[] = {0x02};
@@ -214,9 +209,8 @@ TEST(RequestResponse, TimeoutRejectsAfterDelay) {
     PendingRequest tracker;
     ResponseCapture cap;
 
-    auto session = tracker.add([&](uint8_t d, const uint8_t* data, uint32_t len) {
-        cap.on_response(d, data, len);
-    });
+    auto session = tracker.add(
+        [&](uint8_t d, const uint8_t* data, uint32_t len) { cap.on_response(d, data, len); });
 
     // Simulate a timeout timer on a separate thread
     std::thread timer([&, session] {
@@ -236,9 +230,8 @@ TEST(RequestResponse, ResolveBeforeTimeoutCancelsTimeout) {
     PendingRequest tracker;
     ResponseCapture cap;
 
-    auto session = tracker.add([&](uint8_t d, const uint8_t* data, uint32_t len) {
-        cap.on_response(d, data, len);
-    });
+    auto session = tracker.add(
+        [&](uint8_t d, const uint8_t* data, uint32_t len) { cap.on_response(d, data, len); });
 
     // Resolve immediately
     uint8_t resp[] = {0xFF};
@@ -261,13 +254,13 @@ TEST(RequestResponse, ResolveBeforeTimeoutCancelsTimeout) {
 TEST(RequestResponse, ResponseHeaderEncoding) {
     // A response has message_type = 0x80 (MT_RESPONSE)
     VsomeipMessageHeader hdr{
-        .service_id   = 0x1234,
-        .instance_id  = 0x0001,
-        .method_id    = 0x0001,
+        .service_id = 0x1234,
+        .instance_id = 0x0001,
+        .method_id = 0x0001,
         .message_type = 0x80,  // RESPONSE
-        .return_code  = 0x00,  // E_OK
-        .request_id   = 0x00010001,
-        .payload_len  = 2,
+        .return_code = 0x00,   // E_OK
+        .request_id = 0x00010001,
+        .payload_len = 2,
     };
 
     auto bytes = VsomeipSubscriber::encode_header(hdr);
@@ -280,13 +273,13 @@ TEST(RequestResponse, ResponseHeaderEncoding) {
 TEST(RequestResponse, FireAndForgetHeaderEncoding) {
     // Fire-and-forget has message_type = 0x01 (REQUEST_NO_RETURN)
     VsomeipMessageHeader hdr{
-        .service_id   = 0x5678,
-        .instance_id  = 0x0002,
-        .method_id    = 0x0003,
+        .service_id = 0x5678,
+        .instance_id = 0x0002,
+        .method_id = 0x0003,
         .message_type = 0x01,  // REQUEST_NO_RETURN
-        .return_code  = 0x00,
-        .request_id   = 0,
-        .payload_len  = 0,
+        .return_code = 0x00,
+        .request_id = 0,
+        .payload_len = 0,
     };
 
     auto bytes = VsomeipSubscriber::encode_header(hdr);
@@ -301,8 +294,7 @@ TEST(RequestResponse, SessionIdWraparound) {
     // Allocate many sessions to test wraparound doesn't collide
     std::vector<uint16_t> sessions;
     for (int i = 0; i < 100; ++i) {
-        sessions.push_back(
-            tracker.add([](uint8_t, const uint8_t*, uint32_t) {}));
+        sessions.push_back(tracker.add([](uint8_t, const uint8_t*, uint32_t) {}));
     }
 
     // All unique
@@ -320,9 +312,7 @@ TEST(RequestResponse, ConcurrentAddResolve) {
 
     std::thread adder([&] {
         for (int i = 0; i < N; ++i) {
-            auto s = tracker.add([&](uint8_t, const uint8_t*, uint32_t) {
-                resolved.fetch_add(1);
-            });
+            auto s = tracker.add([&](uint8_t, const uint8_t*, uint32_t) { resolved.fetch_add(1); });
             // Immediately resolve from another conceptual "thread"
             tracker.resolve(s, vsomeip_disc::kMessage, nullptr, 0);
         }

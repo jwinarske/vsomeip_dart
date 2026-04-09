@@ -26,14 +26,14 @@
 
 #pragma once
 
-#include "capnp_bridge.h"
-#include "vsomeip_types.h"
-
 #include <cstdint>
 #include <cstring>
 #include <functional>
 #include <string>
 #include <vector>
+
+#include "capnp_bridge.h"
+#include "vsomeip_types.h"
 
 /// Builds a Cap'n Proto-compatible payload buffer.
 ///
@@ -71,12 +71,14 @@ public:
     size_t size() const { return buf_.size(); }
 
     /// Get the size in Cap'n Proto words (8 bytes each).
-    size_t size_in_words() const {
-        return (buf_.size() + kCapnpWordSize - 1) / kCapnpWordSize;
-    }
+    size_t size_in_words() const { return (buf_.size() + kCapnpWordSize - 1) / kCapnpWordSize; }
 
     /// Get ownership of the buffer.
-    std::vector<uint8_t> take() { return std::move(buf_); }
+    std::vector<uint8_t> take() {
+        std::vector<uint8_t> out = std::move(buf_);
+        buf_.clear();
+        return out;
+    }
 
     /// Check if the buffer is 8-byte aligned (always true for heap alloc).
     bool is_aligned() const { return is_capnp_aligned(buf_.data()); }
@@ -89,18 +91,26 @@ private:
 ///
 /// Returns a buffer containing the packed fields in Cap'n Proto
 /// data section layout (little-endian, fixed offsets).
-std::vector<uint8_t> capnp_build_vehicle_speed(
-    float speed_kmh, uint64_t timestamp,
-    uint16_t sensor_id, uint8_t quality_flag = 0);
+std::vector<uint8_t> capnp_build_vehicle_speed(float speed_kmh,
+                                               uint64_t timestamp,
+                                               uint16_t sensor_id,
+                                               uint8_t quality_flag = 0);
 
 /// Build a RadarObject Cap'n Proto payload.
-std::vector<uint8_t> capnp_build_radar_object(
-    uint16_t object_id, float distance_m, float azimuth_deg,
-    float velocity_ms, float rcs_dbsm, uint64_t timestamp,
-    uint8_t classification = 0);
+std::vector<uint8_t> capnp_build_radar_object(uint16_t object_id,
+                                              float distance_m,
+                                              float azimuth_deg,
+                                              float velocity_ms,
+                                              float rcs_dbsm,
+                                              uint64_t timestamp,
+                                              uint8_t classification = 0);
 
 /// Build an ImuData Cap'n Proto payload.
-std::vector<uint8_t> capnp_build_imu_data(
-    float accel_x, float accel_y, float accel_z,
-    float gyro_x, float gyro_y, float gyro_z,
-    uint64_t timestamp, uint16_t sensor_id = 0);
+std::vector<uint8_t> capnp_build_imu_data(float accel_x,
+                                          float accel_y,
+                                          float accel_z,
+                                          float gyro_x,
+                                          float gyro_y,
+                                          float gyro_z,
+                                          uint64_t timestamp,
+                                          uint16_t sensor_id = 0);

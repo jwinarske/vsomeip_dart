@@ -8,6 +8,7 @@ import 'ffi/codec.dart';
 import 'vsomeip_message.dart';
 import 'vsomeip_service.dart';
 import 'vsomeip_worker.dart';
+
 /// The top-level vsomeip controller for a Dart/Flutter application.
 ///
 /// All vsomeip callbacks are delivered via `Dart_PostCObject_DL` to the
@@ -17,8 +18,10 @@ class VsomeipClient {
   final Object _handle;
   final VsomeipBindings _bindings;
   final ReceivePort _mainPort;
+
   /// Optional worker isolate — present when created via [spawn].
   final Isolate? _workerIsolate;
+
   /// Send port to the worker isolate — used for [setThrottle] and [close].
   final SendPort? _workerPort;
   final Map<SomeIpKey, StreamController<SomeIpMessage>> _streams = {};
@@ -27,8 +30,10 @@ class VsomeipClient {
       StreamController.broadcast();
   final StreamController<VsomeipStateEvent> _stateCtrl =
       StreamController.broadcast();
+
   /// Stream of service availability changes.
   Stream<VsomeipAvailabilityEvent> get availabilityChanges => _availCtrl.stream;
+
   /// Stream of application state changes (registered/deregistered).
   Stream<VsomeipStateEvent> get stateChanges => _stateCtrl.stream;
   VsomeipClient._({
@@ -44,6 +49,7 @@ class VsomeipClient {
        _workerPort = workerPort {
     _mainPort.listen(_onMainPortMessage);
   }
+
   /// Create a vsomeip application in **test mode** (no worker isolate).
   ///
   /// The caller controls [mainPort] and [nativePort], enabling direct message
@@ -67,6 +73,7 @@ class VsomeipClient {
       mainPort: mainPort,
     );
   }
+
   /// Create a vsomeip application with a **real worker isolate**.
   ///
   /// This is the production entry point. It spawns the worker isolate, waits
@@ -109,6 +116,7 @@ class VsomeipClient {
       workerPort: workerPort,
     );
   }
+
   // ── Service consumer API ──────────────────────────────────────────────────
   /// Subscribe to a SOME/IP event group.
   ///
@@ -123,9 +131,7 @@ class VsomeipClient {
   }) {
     final key = SomeIpKey(serviceId, instanceId, eventId);
     if (maxHz > 0.0) {
-      _workerPort?.send(
-        SetThrottleCmd(serviceId, instanceId, eventId, maxHz),
-      );
+      _workerPort?.send(SetThrottleCmd(serviceId, instanceId, eventId, maxHz));
     }
     _bindings.subscribe(
       _handle,
@@ -138,6 +144,7 @@ class VsomeipClient {
     final ctrl = _streams.putIfAbsent(key, () => StreamController.broadcast());
     return ctrl.stream;
   }
+
   /// Unsubscribe from an event group.
   void unsubscribeEvent({
     required int serviceId,
@@ -146,6 +153,7 @@ class VsomeipClient {
   }) {
     _bindings.unsubscribe(_handle, serviceId, instanceId, eventgroupId);
   }
+
   /// Register a handler for messages on a service/instance/method.
   Stream<SomeIpMessage> onMessage({
     required int serviceId,
@@ -156,9 +164,7 @@ class VsomeipClient {
   }) {
     final key = SomeIpKey(serviceId, instanceId, methodId);
     if (maxHz > 0.0) {
-      _workerPort?.send(
-        SetThrottleCmd(serviceId, instanceId, methodId, maxHz),
-      );
+      _workerPort?.send(SetThrottleCmd(serviceId, instanceId, methodId, maxHz));
     }
     _bindings.registerMessageHandler(
       _handle,
@@ -169,6 +175,7 @@ class VsomeipClient {
     );
     return _streams.putIfAbsent(key, () => StreamController.broadcast()).stream;
   }
+
   /// Send a SOME/IP request and await the response.
   Future<SomeIpMessage> request({
     required int serviceId,
@@ -200,6 +207,7 @@ class VsomeipClient {
     );
     return completer.future;
   }
+
   /// Send a fire-and-forget message (no response expected).
   void fireAndForget({
     required int serviceId,
@@ -215,6 +223,7 @@ class VsomeipClient {
       payload ?? Uint8List(0),
     );
   }
+
   // ── Service provider API ──────────────────────────────────────────────────
   /// Offer a SOME/IP service from this application.
   VsomeipService offerService({
@@ -232,6 +241,7 @@ class VsomeipClient {
       requests: requestStream,
     );
   }
+
   // ── Rate limiting ─────────────────────────────────────────────────────────
   /// Update the per-signal rate limit for a previously subscribed event.
   ///
@@ -245,6 +255,7 @@ class VsomeipClient {
   }) {
     _workerPort?.send(SetThrottleCmd(serviceId, instanceId, methodId, maxHz));
   }
+
   // ── Cap'n Proto API ───────────────────────────────────────────────────────
   /// Subscribe to a Cap'n Proto-encoded SOME/IP event (Path A — raw
   /// passthrough). The payload contains raw Cap'n Proto bytes readable
@@ -270,6 +281,7 @@ class VsomeipClient {
     final key = SomeIpKey(serviceId, instanceId, eventId);
     return _streams.putIfAbsent(key, () => StreamController.broadcast()).stream;
   }
+
   /// Subscribe with C++ selective decode (Path B).
   Stream<SomeIpMessage> subscribeCapnpDecoded({
     required int serviceId,
@@ -292,6 +304,7 @@ class VsomeipClient {
     final key = SomeIpKey(serviceId, instanceId, eventId);
     return _streams.putIfAbsent(key, () => StreamController.broadcast()).stream;
   }
+
   /// Publish a Cap'n Proto notification (zero-copy write path).
   void notifyCapnp({
     required int serviceId,
@@ -311,6 +324,7 @@ class VsomeipClient {
       force,
     );
   }
+
   /// Close the vsomeip application and release all resources.
   Future<void> close() async {
     // Signal worker isolate to shut down gracefully
@@ -324,6 +338,7 @@ class VsomeipClient {
     await _availCtrl.close();
     await _stateCtrl.close();
   }
+
   // ── Internal ──────────────────────────────────────────────────────────────
   void _onMainPortMessage(dynamic msg) {
     if (msg is SomeIpMessage) {

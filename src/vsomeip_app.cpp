@@ -16,35 +16,41 @@
 
 #include "vsomeip_app.h"
 
+#include <cstring>
+#include <mutex>
+#include <stdexcept>
 #include <vsomeip/vsomeip.hpp>
 
-#include <cstring>
-#include <stdexcept>
+// Serializes process-wide setenv("VSOMEIP_CONFIGURATION") + init() so two
+// concurrent VsomeipApp constructions cannot race the env var. vsomeip
+// reads the env var inside init(), so we hold the lock across both.
+static std::mutex& vsomeip_init_mutex() {
+    static std::mutex m;
+    return m;
+}
 
 // ── Production constructor ──────────────────────────────────────────────────────
 
-VsomeipApp::VsomeipApp(const std::string& app_name,
-                       const char* config_path,
-                       PostFn post_fn)
+VsomeipApp::VsomeipApp(const std::string& app_name, const char* config_path, PostFn post_fn)
     : post_fn_(std::move(post_fn)), app_name_(app_name) {
     auto runtime = vsomeip::runtime::get();
     app_ = runtime->create_application(app_name);
 
     if (!app_) {
-        throw std::runtime_error(
-            "[vsomeip_dart] Failed to create vsomeip application: " + app_name);
+        throw std::runtime_error("[vsomeip_dart] Failed to create vsomeip application: " +
+                                 app_name);
     }
 
-    if (config_path) {
-        // vsomeip uses VSOMEIP_CONFIGURATION env to locate the config file.
-        // Setting it before init() takes effect.
-        setenv("VSOMEIP_CONFIGURATION", config_path, 1);
-    }
-
-    if (!app_->init()) {
-        throw std::runtime_error(
-            "[vsomeip_dart] vsomeip::application::init() failed for: " +
-            app_name);
+    {
+        // M4: serialize env mutation + init across concurrent constructions.
+        std::lock_guard<std::mutex> lock(vsomeip_init_mutex());
+        if (config_path) {
+            setenv("VSOMEIP_CONFIGURATION", config_path, 1);
+        }
+        if (!app_->init()) {
+            throw std::runtime_error("[vsomeip_dart] vsomeip::application::init() failed for: " +
+                                     app_name);
+        }
     }
 
     register_handlers();
@@ -52,8 +58,7 @@ VsomeipApp::VsomeipApp(const std::string& app_name,
 
 // ── Test constructor ────────────────────────────────────────────────────────────
 
-VsomeipApp::VsomeipApp(std::shared_ptr<vsomeip::application> app,
-                       PostFn post_fn)
+VsomeipApp::VsomeipApp(std::shared_ptr<vsomeip::application> app, PostFn post_fn)
     : app_(std::move(app)), post_fn_(std::move(post_fn)) {
     register_handlers();
 }
@@ -67,9 +72,14 @@ VsomeipApp::~VsomeipApp() {
 // ── Lifecycle ───────────────────────────────────────────────────────────────────
 
 void VsomeipApp::start() {
-    if (running_.load(std::memory_order_acquire)) return;
-
-    running_.store(true, std::memory_order_release);
+    // H4: CAS-guard against concurrent or repeat start() calls. The previous
+    // load/store pattern allowed two threads to both observe `running_==false`
+    // and each spawn a thread.
+    bool expected = false;
+    if (!running_.compare_exchange_strong(
+            expected, true, std::memory_order_acq_rel, std::memory_order_acquire)) {
+        return;
+    }
     thread_ = std::thread([this] {
         try {
             app_->start();  // blocks forever until stop() is called
@@ -87,9 +97,17 @@ void VsomeipApp::start() {
 }
 
 void VsomeipApp::stop() {
-    if (!running_.load(std::memory_order_acquire) && !thread_.joinable()) return;
-
-    app_->stop();
+    // H4: always attempt to join if a thread was spawned, regardless of the
+    // running_ flag — the worker may have already cleared it on the way out
+    // of an exception path. Calling app_->stop() on an already-stopped
+    // application is safe per vsomeip docs.
+    if (app_) {
+        try {
+            app_->stop();
+        } catch (...) {
+            // best-effort: don't throw out of a destructor path
+        }
+    }
     if (thread_.joinable()) {
         thread_.join();
     }
@@ -99,13 +117,13 @@ void VsomeipApp::stop() {
 // ── Handler registration ────────────────────────────────────────────────────────
 
 void VsomeipApp::register_handlers() {
-    app_->register_state_handler(
-        [this](vsomeip::state_type_e state) {
-            on_state(state == vsomeip::state_type_e::ST_REGISTERED);
-        });
+    app_->register_state_handler([this](vsomeip::state_type_e state) {
+        on_state(state == vsomeip::state_type_e::ST_REGISTERED);
+    });
 
     app_->register_availability_handler(
-        vsomeip::ANY_SERVICE, vsomeip::ANY_INSTANCE,
+        vsomeip::ANY_SERVICE,
+        vsomeip::ANY_INSTANCE,
         [this](vsomeip::service_t svc, vsomeip::instance_t inst, bool avail) {
             on_availability(svc, inst, avail);
         });
@@ -122,8 +140,7 @@ void VsomeipApp::on_state(bool registered) {
     post_fn_(vsomeip_disc::kState, buf.data(), static_cast<uint32_t>(buf.size()));
 }
 
-void VsomeipApp::on_availability(uint16_t service_id, uint16_t instance_id,
-                                 bool available) {
+void VsomeipApp::on_availability(uint16_t service_id, uint16_t instance_id, bool available) {
     VsomeipAvailability avail{service_id, instance_id, available};
     // Encode as raw struct bytes (trivially copyable)
     post_fn_(vsomeip_disc::kAvailability,
